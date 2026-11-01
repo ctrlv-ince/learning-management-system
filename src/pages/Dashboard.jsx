@@ -1,0 +1,372 @@
+import { Link } from "react-router-dom";
+import {
+  Activity,
+  ArrowDownRight,
+  ArrowRight,
+  ArrowUpRight,
+  BookOpen,
+  Check,
+  CheckCircle2,
+  ChevronDown,
+  Clock3,
+  FileText,
+  Sparkles,
+  Users,
+} from "lucide-react";
+import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
+import {
+  useAuth,
+  useData,
+  PageHeader,
+  Loading,
+  EmptyPanel,
+  CourseRow,
+  fullName,
+  initials,
+} from "../shared.jsx";
+
+export function Dashboard() {
+  const { session } = useAuth();
+  const { data, loading } = useData("/dashboard");
+  const faculty = session.user.role === "faculty";
+  if (loading) return <Loading />;
+  if (!data)
+    return (
+      <EmptyPanel
+        title="Couldn’t load your overview"
+        body="Refresh the page and try again."
+      />
+    );
+  return (
+    <div className="page-shell">
+      <div className="welcome-row">
+        <div>
+          <span className="eyebrow">
+            {new Intl.DateTimeFormat("en", {
+              weekday: "long",
+              month: "long",
+              day: "numeric",
+            })
+              .format(new Date())
+              .toUpperCase()}
+          </span>
+          <h1>
+            {faculty ? "A good day to teach, " : "Welcome back, "}
+            {session.user.firstName}
+            <span className="title-period">.</span>
+          </h1>
+          <p className="muted">
+            {faculty
+              ? "Here’s what’s moving across your classes."
+              : "A few steady steps can take you a long way."}
+          </p>
+        </div>
+        <div className="welcome-decoration">
+          <span>✳</span>
+          <i>YOUR SPACE, IN GOOD ORDER</i>
+        </div>
+      </div>
+      {faculty ? (
+        <FacultyDashboard data={data} />
+      ) : (
+        <StudentDashboard data={data} profile={data.profile} />
+      )}
+    </div>
+  );
+}
+
+export function FacultyDashboard({ data }) {
+  const stats = [
+    {
+      label: "Courses in motion",
+      value: data.stats.courses,
+      icon: BookOpen,
+      note: "assigned this term",
+      tone: "mint",
+    },
+    {
+      label: "Students learning",
+      value: data.stats.students,
+      icon: Users,
+      note: "across your courses",
+      tone: "lavender",
+    },
+    {
+      label: "Lessons shared",
+      value: data.stats.lessons,
+      icon: FileText,
+      note: `${data.stats.quizzes} assessments`,
+      tone: "peach",
+    },
+  ];
+  return (
+    <>
+      <section className="stats-grid">
+        {stats.map((stat) => (
+          <div className="stat-card" key={stat.label}>
+            <div className={`stat-icon ${stat.tone}`}>
+              <stat.icon size={18} />
+            </div>
+            <span className="stat-label">{stat.label}</span>
+            <strong className="stat-value">{stat.value}</strong>
+            <span className="stat-note">{stat.note}</span>
+          </div>
+        ))}
+      </section>
+      <div className="dashboard-grid faculty-grid">
+        <section className="panel courses-panel">
+          <div className="panel-heading">
+            <div>
+              <span className="eyebrow">YOUR CLASSROOM</span>
+              <h2>Courses to tend</h2>
+            </div>
+            <Link className="text-link" to="/courses">
+              All courses <ArrowRight size={14} />
+            </Link>
+          </div>
+          {data.offerings.length ? (
+            <div className="course-list">
+              {data.offerings.slice(0, 5).map((offering, i) => (
+                <CourseRow
+                  key={offering._id}
+                  offering={offering}
+                  index={i}
+                  showRoster
+                />
+              ))}
+            </div>
+          ) : (
+            <EmptyPanel
+              title="A blank page is a good start."
+              body="Create your first course offering to bring a class together."
+              link="/academic-setup"
+              linkText="Set up a course"
+            />
+          )}
+        </section>
+        <section className="panel activity-panel">
+          <div className="panel-heading">
+            <div>
+              <span className="eyebrow">A LITTLE MOVEMENT</span>
+              <h2>Recent assessments</h2>
+            </div>
+            <Activity size={18} className="subtle-icon" />
+          </div>
+          {data.recentAttempts.length ? (
+            <div className="activity-list">
+              {data.recentAttempts.slice(0, 5).map((attempt) => (
+                <div className="activity-item" key={attempt._id}>
+                  <span
+                    className={`activity-dot ${attempt.passed ? "passed" : "failed"}`}
+                  />
+                  <div>
+                    <strong>{fullName(attempt.student)}</strong>
+                    <small>
+                      {attempt.passed
+                        ? "Passed an assessment"
+                        : "Needs another try"}
+                    </small>
+                  </div>
+                  <span
+                    className={`score-chip ${attempt.passed ? "pass" : "fail"}`}
+                  >
+                    {attempt.percent}%
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="quiet-empty">
+              <span className="quiet-icon">
+                <Sparkles size={18} />
+              </span>
+              <strong>The first steps are still ahead.</strong>
+              <p>Student activity will appear here.</p>
+            </div>
+          )}
+          <div className="outcome-strip">
+            <div>
+              <span className="outcome-mark good">
+                <Check size={13} />
+              </span>
+              <span>Passed</span>
+              <b>{data.stats.passed}</b>
+            </div>
+            <div>
+              <span className="outcome-mark retry">
+                <ArrowDownRight size={13} />
+              </span>
+              <span>Needs a retry</span>
+              <b>{data.stats.failed}</b>
+            </div>
+          </div>
+        </section>
+      </div>
+    </>
+  );
+}
+
+export function StudentDashboard({ data, profile }) {
+  const progress = data.progress;
+  const marks = data.weeklyActivity || [];
+  return (
+    <>
+      <section className="student-banner">
+        <div className="identity">
+          <span className="avatar large">
+            {initials(useAuth().session.user)}
+          </span>
+          <div>
+            <span className="eyebrow">YOUR ACADEMIC PROFILE</span>
+            <h2>{profile?.studentId || "Student profile"}</h2>
+            <p>
+              {profile?.program?.code} <span>·</span>{" "}
+              {profile?.currentYearLevel} <span>·</span>{" "}
+              {profile?.section?.name || "Section not assigned"}
+            </p>
+          </div>
+        </div>
+        <div className="banner-divider" />
+        <div className="banner-progress">
+          <div className="banner-progress-title">
+            <span>LEARNING PROGRESS</span>
+            <b>{progress.percent}%</b>
+          </div>
+          <div className="progress-track">
+            <span style={{ width: `${progress.percent}%` }} />
+          </div>
+          <small>
+            {progress.completed} of {progress.total} lessons completed
+          </small>
+        </div>
+        <div className="banner-orbit">✳</div>
+      </section>
+      <div className="dashboard-grid student-grid">
+        <section className="panel courses-panel">
+          <div className="panel-heading">
+            <div>
+              <span className="eyebrow">THE WORK IN FRONT OF YOU</span>
+              <h2>Your courses</h2>
+            </div>
+            <Link className="text-link" to="/courses">
+              See all <ArrowRight size={14} />
+            </Link>
+          </div>
+          {data.offerings.length ? (
+            <div className="course-list">
+              {data.offerings.slice(0, 5).map((offering, i) => (
+                <CourseRow
+                  key={offering._id}
+                  offering={offering}
+                  index={i}
+                  progress={progress}
+                />
+              ))}
+            </div>
+          ) : (
+            <EmptyPanel
+              title="Your next chapter is on its way."
+              body="Once a faculty member enrolls you in a course, it will appear here."
+            />
+          )}
+        </section>
+        <section className="panel rhythm-panel">
+          <div className="panel-heading">
+            <div>
+              <span className="eyebrow">STEADY IS A SUPERPOWER</span>
+              <h2>Your learning rhythm</h2>
+            </div>
+            <span className="chart-period">
+              THIS WEEK <ChevronDown size={12} />
+            </span>
+          </div>
+          <div className="rhythm-caption">
+            <b>{marks.reduce((total, day) => total + day.value, 0)}</b>
+            <span>quiz attempts this week</span>
+            <span className="trend-up">
+              <Clock3 size={13} /> Small steps count
+            </span>
+          </div>
+          <div className="chart-wrap">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart
+                data={marks}
+                margin={{ left: -25, right: 4, top: 12, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient id="progressFill" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#688978" stopOpacity={0.2} />
+                    <stop offset="100%" stopColor="#688978" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis
+                  dataKey="day"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{
+                    fill: "#95988f",
+                    fontSize: 10,
+                    fontFamily: "DM Sans",
+                  }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: 10,
+                    border: "1px solid #e8e7e0",
+                    fontSize: 12,
+                  }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="value"
+                  stroke="#648472"
+                  strokeWidth={2.5}
+                  fill="url(#progressFill)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="chart-note">
+            <span className="chart-legend-dot" />
+            Quiz attempts submitted each day
+          </div>
+        </section>
+      </div>
+      <section className="recent-results">
+        <div>
+          <span className="eyebrow">GOOD THINGS ADD UP</span>
+          <h2>Recent results</h2>
+        </div>
+        <div className="results-row">
+          {data.recentAttempts.length ? (
+            data.recentAttempts.slice(0, 3).map((attempt) => (
+              <div className="result-pill" key={attempt._id}>
+                <span
+                  className={`result-icon ${attempt.passed ? "success" : "again"}`}
+                >
+                  {attempt.passed ? (
+                    <Check size={14} />
+                  ) : (
+                    <ArrowDownRight size={14} />
+                  )}
+                </span>
+                <span>
+                  <b>{attempt.quiz?.lesson?.title || "Lesson assessment"}</b>
+                  <small>
+                    {attempt.passed ? "Passed" : "Keep practicing"} ·{" "}
+                    {new Date(attempt.submittedAt).toLocaleDateString()}
+                  </small>
+                </span>
+                <strong>{attempt.percent}%</strong>
+              </div>
+            ))
+          ) : (
+            <p className="muted">
+              Your first assessment result will show up here.
+            </p>
+          )}
+        </div>
+      </section>
+    </>
+  );
+}

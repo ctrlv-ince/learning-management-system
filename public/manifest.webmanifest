@@ -1,0 +1,17 @@
+{
+  "name": "Modulink Learning",
+  "short_name": "Modulink",
+  "description": "Courses, learning resources, and academic progress connected.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f4f5f1",
+  "theme_color": "#f4f5f1",
+  "icons": [
+    {
+      "src": "/modulink-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
