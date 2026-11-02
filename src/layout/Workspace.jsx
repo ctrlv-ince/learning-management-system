@@ -113,6 +113,13 @@ export function Workspace() {
           ))}
         </div>
         <div className="sidebar-bottom">
+          <Link
+            className="sidebar-public-home"
+            to="/welcome"
+            onClick={() => setMobileNav(false)}
+          >
+            <ArrowUpRight size={14} /> View public landing page
+          </Link>
           <div className="term-card">
             <span className="term-symbol">
               <Sparkles size={15} />

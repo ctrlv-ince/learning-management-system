@@ -13,12 +13,14 @@ import {
   Users,
 } from "lucide-react";
 import { api, send } from "../api.js";
+import { validateRequiredValues } from "../formValidation.js";
 import {
   useAuth,
   useData,
   PageHeader,
   Loading,
   EmptyPanel,
+  semesterLabel,
 } from "../shared.jsx";
 
 export function Courses() {
@@ -36,6 +38,7 @@ export function Courses() {
   }, [faculty]);
   async function requestEnrollment(event) {
     event.preventDefault();
+    if (!validateRequiredValues(event.currentTarget)) return;
     setJoining(true);
     try {
       await api(
@@ -140,7 +143,7 @@ export function Courses() {
               </div>
               <div className="course-card-body">
                 <div className="course-card-kicker">
-                  <span>{offering.semester}</span>
+                  <span>{semesterLabel(offering.semester)}</span>
                   <span>{offering.academicYear?.label}</span>
                 </div>
                 <h2>{offering.course?.title}</h2>
@@ -198,18 +201,19 @@ export function CoursePage() {
   }, [offeringId]);
   async function addLesson(event) {
     event.preventDefault();
+    const lessonForm = event.currentTarget;
+    if (!validateRequiredValues(lessonForm)) return;
     setBusy(true);
-    const values = Object.fromEntries(new FormData(event.currentTarget));
+    const values = Object.fromEntries(new FormData(lessonForm));
     try {
       await api(
         `/offerings/${offeringId}/lessons`,
         send("POST", {
           ...values,
           sequence: Number(values.sequence),
-          published: true,
         }),
       );
-      event.currentTarget.reset();
+      lessonForm.reset();
       notify("Lesson added to the course.");
       await load();
     } catch (error) {
@@ -253,7 +257,7 @@ export function CoursePage() {
           </h1>
           <p className="muted">
             {offering?.course?.description ||
-              `${offering?.academicYear?.label || ""} · ${offering?.semester || ""}`}
+              `${offering?.academicYear?.label || ""} · ${semesterLabel(offering?.semester || "")}`}
           </p>
         </div>
         {faculty && (
@@ -296,11 +300,13 @@ export function CoursePage() {
             <span className="eyebrow">BUILD THE LEARNING PATH</span>
             <h2>Add a lesson</h2>
             <p>Keep each lesson focused. Students unlock them in sequence.</p>
+            <p className="lesson-upload-hint">New lessons stay hidden. Add and publish their quiz, then publish the lesson when it is ready.</p>
             <label>
               Lesson title
               <input
                 name="title"
                 placeholder="e.g. Variables and data types"
+                minLength={2}
                 required
               />
             </label>
@@ -337,13 +343,6 @@ export function CoursePage() {
                 defaultValue={lessons.length + 1}
                 required
               />
-            </label>
-            <label>
-              Completion requirement
-              <select name="completion">
-                <option value="quiz">Pass a quiz</option>
-                <option value="acknowledgement">Mark lesson complete</option>
-              </select>
             </label>
             <button className="button primary" disabled={busy}>
               <Plus size={16} /> {busy ? "Adding…" : "Add lesson"}

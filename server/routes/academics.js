@@ -31,8 +31,8 @@ import {
   studentOfferings,
   success,
 } from "../middleware.js";
+import { studentCanAccessLesson } from "../lesson-access.js";
 import {
-  calculateCourseGrade,
   evaluateQuiz,
   getLessonStatus,
   quizExpiresAt,
@@ -100,6 +100,48 @@ router.get(
 );
 
 router.use(authenticate);
+
+router.patch(
+  "/student-profile/year-level",
+  allowRoles("student"),
+  asyncRoute(async (req, res) => {
+    const parsed = z
+      .object({ currentYearLevel: z.string().trim().min(2).max(40) })
+      .safeParse(req.body);
+    if (!parsed.success) return fail(res, 400, "Choose a valid year level.");
+    const profile = await StudentProfile.findOne({
+      user: req.user.id,
+    }).populate("program", "yearLevels");
+    if (!profile?.program)
+      return fail(res, 404, "Student profile or degree program not found.");
+    if (!profile.program.yearLevels.includes(parsed.data.currentYearLevel))
+      return fail(
+        res,
+        400,
+        "Choose a year level available in your degree program.",
+      );
+
+    const section = profile.section
+      ? await Section.findById(profile.section).select("name yearLevel program")
+      : null;
+    if (
+      profile.section &&
+      (!section ||
+        section.yearLevel !== parsed.data.currentYearLevel ||
+        String(section.program) !== String(profile.program._id))
+    )
+      profile.section = undefined;
+    profile.currentYearLevel = parsed.data.currentYearLevel;
+    await profile.save();
+    return success(res, {
+      currentYearLevel: profile.currentYearLevel,
+      section:
+        section && profile.section
+          ? { id: String(section._id), name: section.name }
+          : null,
+    });
+  }),
+);
 
 router.get(
   "/classmates",
@@ -331,52 +373,85 @@ function quizForSession(quiz, session) {
   return quizData;
 }
 
-async function lessonAccess(lesson, studentId) {
-  const offering = await studentOffering(lesson.offering, studentId);
-  if (!offering || !lesson.published) return false;
-  return Boolean(
-    await AccessGrant.exists({
-      student: studentId,
-      offering: lesson.offering,
-      lesson: lesson.id,
-    }),
+async function recordExpiredAttempt({ session, quiz, lesson, studentId, now }) {
+  const expiredSession = await QuizSession.findOneAndDelete({
+    _id: session._id,
+    student: studentId,
+    quiz: quiz._id,
+    attemptNumber: { $gt: 0 },
+  });
+  if (!expiredSession) return null;
+  const totalPoints = quiz.questions.reduce(
+    (total, question) => total + question.points,
+    0,
   );
+  return Attempt.create({
+    student: studentId,
+    quiz: quiz._id,
+    offering: lesson.offering,
+    answers: [],
+    earnedPoints: 0,
+    totalPoints,
+    percent: 0,
+    passed: false,
+    timedOut: true,
+    submittedAt: now,
+  });
+}
+
+async function lessonAccess(lesson, studentId) {
+  return studentCanAccessLesson(lesson, studentId);
 }
 
 async function seedFirstLesson(offeringId, students) {
   if (!students.length) return;
-  const first = await Lesson.findOne({ offering: offeringId, published: true })
+  const first = await Lesson.findOne({ offering: offeringId })
     .sort("sequence")
-    .select("_id");
-  if (!first) return;
+    .select("_id published")
+    .lean();
+  if (!first?.published || !(await Quiz.exists({ lesson: first._id, published: true }))) return;
   await Promise.all(
     students.map(async (student) => {
-      if (!(await AccessGrant.exists({ student, offering: offeringId })))
+      try {
         await AccessGrant.updateOne(
-          { student, offering: offeringId, lesson: first.id },
-          { $setOnInsert: { student, offering: offeringId, lesson: first.id } },
+          { student, offering: offeringId, lesson: first._id },
+          { $setOnInsert: { student, offering: offeringId, lesson: first._id } },
           { upsert: true },
         );
+      } catch (error) {
+        if (error.code !== 11000) throw error;
+      }
     }),
   );
 }
 
-async function grantNextLesson(lesson, studentId) {
-  const nextLesson = await Lesson.findOne({
-    offering: lesson.offering,
-    published: true,
-    sequence: { $gt: lesson.sequence },
-  })
+async function firstPublishedLessonWithQuiz(offeringId, afterSequence) {
+  const query = {
+    offering: offeringId,
+    ...(afterSequence === undefined ? {} : { sequence: { $gt: afterSequence } }),
+  };
+  const lesson = await Lesson.findOne(query)
     .sort("sequence")
-    .select("_id");
+    .select("_id sequence published")
+    .lean();
+  if (!lesson?.published || !(await Quiz.exists({ lesson: lesson._id, published: true })))
+    return null;
+  return lesson;
+}
+
+async function grantNextLesson(lesson, studentId) {
+  const nextLesson = await firstPublishedLessonWithQuiz(
+    lesson.offering,
+    lesson.sequence,
+  );
   if (nextLesson)
     await AccessGrant.updateOne(
-      { student: studentId, offering: lesson.offering, lesson: nextLesson.id },
+      { student: studentId, offering: lesson.offering, lesson: nextLesson._id },
       {
         $setOnInsert: {
           student: studentId,
           offering: lesson.offering,
-          lesson: nextLesson.id,
+          lesson: nextLesson._id,
           grantedByLesson: lesson.id,
         },
       },
@@ -441,7 +516,7 @@ router.get(
       });
     }
     const profile = await StudentProfile.findOne({ user: req.user.id })
-      .populate("program", "name code")
+      .populate("program", "name code yearLevels")
       .populate("section", "name yearLevel")
       .lean();
     const studentCourses = await studentOfferings(req.user.id);
@@ -458,17 +533,34 @@ router.get(
     const weekStart = new Date();
     weekStart.setUTCHours(0, 0, 0, 0);
     weekStart.setUTCDate(weekStart.getUTCDate() - 6);
-    const [lessons, completed, attempts, grades, weeklyAttempts] =
+    const [lessons, passingAttempts, publishedQuizzes, progressResets, attempts, grades, weeklyAttempts] =
       await Promise.all([
         Lesson.find({ offering: { $in: offeringIds }, published: true })
-          .select("offering sequence title")
+          .select("_id offering sequence title")
           .sort("sequence")
+          .lean(),
+        Attempt.find({
+          student: req.user.id,
+          offering: { $in: offeringIds },
+          passed: true,
+        })
+          .select("quiz submittedAt")
+          .lean(),
+        Quiz.find({
+          published: true,
+          lesson: {
+            $in: await Lesson.find({ offering: { $in: offeringIds }, published: true }).distinct("_id"),
+          },
+        })
+          .select("_id lesson")
           .lean(),
         Progress.find({
           student: req.user.id,
           offering: { $in: offeringIds },
-          completedAt: { $ne: null },
-        }).distinct("lesson"),
+          resetAt: { $ne: null },
+        })
+          .select("lesson resetAt")
+          .lean(),
         Attempt.find({ student: req.user.id, offering: { $in: offeringIds } })
           .sort("-submittedAt")
           .limit(5)
@@ -489,6 +581,24 @@ router.get(
           .select("submittedAt")
           .lean(),
       ]);
+    const resetsByLesson = new Map(
+      progressResets.map((progress) => [String(progress.lesson), progress.resetAt]),
+    );
+    const lessonsWithQuizzes = lessons.filter((lesson) =>
+      publishedQuizzes.some((quiz) => String(quiz.lesson) === String(lesson._id)),
+    );
+    const completed = lessonsWithQuizzes.filter((lesson) => {
+      const quiz = publishedQuizzes.find(
+        (item) => String(item.lesson) === String(lesson._id),
+      );
+      if (!quiz) return false;
+      const resetAt = resetsByLesson.get(String(lesson._id));
+      return passingAttempts.some(
+        (attempt) =>
+          String(attempt.quiz) === String(quiz._id) &&
+          (!resetAt || new Date(attempt.submittedAt) > new Date(resetAt)),
+      );
+    });
     const weeklyActivity = Array.from({ length: 7 }, (_, index) => {
       const date = new Date(weekStart);
       date.setUTCDate(date.getUTCDate() + index);
@@ -508,10 +618,10 @@ router.get(
       profile,
       offerings,
       progress: {
-        total: lessons.length,
+        total: lessonsWithQuizzes.length,
         completed: completed.length,
-        percent: lessons.length
-          ? Math.round((completed.length * 100) / lessons.length)
+        percent: lessonsWithQuizzes.length
+          ? Math.round((completed.length * 100) / lessonsWithQuizzes.length)
           : 0,
       },
       recentAttempts: attempts,
@@ -696,7 +806,11 @@ router.post(
         title: z.string().trim().min(2).max(120),
         description: z.string().max(1000).optional(),
         academicYear: id,
-        semester: z.enum(["First Semester", "Second Semester", "Summer"]),
+        semester: z.enum([
+          "First Semester",
+          "Second Semester",
+          "Third Semester",
+        ]),
         section: id,
       }),
       req.body,
@@ -725,6 +839,23 @@ router.post(
         title: parsed.data.title,
         description: parsed.data.description,
       });
+    const semesterNames =
+      parsed.data.semester === "Third Semester"
+        ? ["Third Semester", "Summer"]
+        : [parsed.data.semester];
+    if (
+      await Offering.exists({
+        course: course.id,
+        academicYear: academicYear.id,
+        semester: { $in: semesterNames },
+        section: section.id,
+      })
+    )
+      return fail(
+        res,
+        409,
+        "This course already has an offering for that section and semester.",
+      );
     const enrolledStudents = await StudentProfile.find({
       section: section.id,
     }).distinct("user");
@@ -989,46 +1120,6 @@ router.get(
   }),
 );
 
-router.patch(
-  "/offerings/:offeringId/students/:studentId/profile",
-  allowRoles("faculty"),
-  asyncRoute(async (req, res) => {
-    const params = isValid(
-      z.object({ offeringId: id, studentId: id }),
-      req.params,
-    );
-    const body = isValid(
-      z.object({ currentYearLevel: z.string().min(2).max(40) }),
-      req.body,
-    );
-    if (!params.success || !body.success)
-      return fail(res, 400, "Choose a valid student and year level.");
-    const offering = await facultyOffering(params.data.offeringId, req.user.id);
-    if (
-      !offering ||
-      !offering.students.some(
-        (student) => String(student) === params.data.studentId,
-      )
-    )
-      return fail(res, 404, "Enrolled student not found.");
-    const profile = await StudentProfile.findOne({
-      user: params.data.studentId,
-    }).populate("program", "yearLevels");
-    if (
-      !profile ||
-      !profile.program.yearLevels.includes(body.data.currentYearLevel)
-    )
-      return fail(
-        res,
-        400,
-        "That year level is not available in the student’s program.",
-      );
-    profile.currentYearLevel = body.data.currentYearLevel;
-    await profile.save();
-    return success(res, { currentYearLevel: profile.currentYearLevel });
-  }),
-);
-
 router.get(
   "/offerings/:offeringId/lessons",
   asyncRoute(async (req, res) => {
@@ -1039,14 +1130,17 @@ router.get(
         ? await facultyOffering(req.params.offeringId, req.user.id)
         : await studentOffering(req.params.offeringId, req.user.id);
     if (!offering) return fail(res, 404, "Course offering not found.");
-    const lessons = await Lesson.find({
-      offering: offering.id,
-      ...(req.user.role === "student" ? { published: true } : {}),
-    })
+    const allLessons = await Lesson.find({ offering: offering.id })
       .sort("sequence")
       .lean();
+    if (req.user.role === "student")
+      await seedFirstLesson(offering.id, [req.user.id]);
+    let lessons =
+      req.user.role === "student"
+        ? allLessons.filter((lesson) => lesson.published)
+        : allLessons;
     const quizzes = await Quiz.find({
-      lesson: { $in: lessons.map((item) => item._id) },
+      lesson: { $in: allLessons.map((item) => item._id) },
       ...(req.user.role === "student" ? { published: true } : {}),
     })
       .select(
@@ -1056,25 +1150,21 @@ router.get(
       )
       .lean();
     const quizMap = new Map(quizzes.map((quiz) => [String(quiz.lesson), quiz]));
-    const progress =
+    if (req.user.role === "student")
+      lessons = lessons.filter((lesson) => quizMap.has(String(lesson._id)));
+    const progressRows =
       req.user.role === "student"
         ? await Progress.find({
             student: req.user.id,
             offering: offering.id,
-            completedAt: { $ne: null },
-          }).distinct("lesson")
-        : [];
-    const grants =
-      req.user.role === "student"
-        ? await AccessGrant.find({
-            student: req.user.id,
-            offering: offering.id,
-          }).distinct("lesson")
+          })
+            .select("lesson resetAt")
+            .lean()
         : [];
     const attempts =
       req.user.role === "student"
         ? await Attempt.find({ student: req.user.id, offering: offering.id })
-            .select("quiz percent passed")
+            .select("quiz percent passed submittedAt")
             .lean()
         : [];
     const attemptMap = new Map();
@@ -1082,6 +1172,23 @@ router.get(
       const prior = attemptMap.get(String(attempt.quiz)) || [];
       attemptMap.set(String(attempt.quiz), [...prior, attempt]);
     });
+    const progressMap = new Map(
+      progressRows.map((item) => [String(item.lesson), item]),
+    );
+    const hasPassedLesson = (lesson) => {
+      if (!lesson) return false;
+      const quiz = quizMap.get(String(lesson._id));
+      if (!quiz) return false;
+      const resetAt = progressMap.get(String(lesson._id))?.resetAt;
+      return (attemptMap.get(String(quiz._id)) || []).some(
+        (attempt) =>
+          attempt.passed &&
+          (!resetAt || new Date(attempt.submittedAt) > new Date(resetAt)),
+      );
+    };
+    const lessonPositions = new Map(
+      allLessons.map((lesson, index) => [String(lesson._id), index]),
+    );
     const response = await Promise.all(
       lessons.map(async (lesson, index) => ({
         ...lesson,
@@ -1089,13 +1196,16 @@ router.get(
         ...(req.user.role === "student"
           ? {
               status: getLessonStatus({
-                completed: progress.some(
-                  (item) => String(item) === String(lesson._id),
-                ),
-                granted: grants.some(
-                  (item) => String(item) === String(lesson._id),
-                ),
-                first: false,
+                completed: hasPassedLesson(lesson),
+                granted: (() => {
+                  const position = lessonPositions.get(String(lesson._id));
+                  return position === 0
+                    ? true
+                    : position > 0 &&
+                        Boolean(allLessons[position - 1]?.published) &&
+                        hasPassedLesson(allLessons[position - 1]);
+                })(),
+                first: lessonPositions.get(String(lesson._id)) === 0,
               }),
               attempts: (
                 attemptMap.get(String(quizMap.get(String(lesson._id))?._id)) ||
@@ -1124,8 +1234,6 @@ router.post(
         summary: z.string().max(5000).optional(),
         sequence: z.coerce.number().int().min(1),
         videoUrl: z.string().url().optional().or(z.literal("")),
-        published: z.boolean().optional(),
-        completion: z.enum(["quiz", "acknowledgement"]).default("quiz"),
       }),
       req.body,
     );
@@ -1139,13 +1247,12 @@ router.post(
       );
     const offering = await facultyOffering(req.params.offeringId, req.user.id);
     if (!offering) return fail(res, 404, "Course offering not found.");
-    const existed = await Lesson.exists({ offering: offering.id });
     const lesson = await Lesson.create({
       ...parsed.data,
       offering: offering.id,
+      published: false,
+      completion: "quiz",
     });
-    if (!existed && lesson.published)
-      await seedFirstLesson(offering.id, offering.students);
     return success(res, lesson, 201);
   }),
 );
@@ -1224,12 +1331,21 @@ router.patch(
         summary: z.string().max(5000).optional(),
         sequence: z.number().int().min(1).optional(),
         published: z.boolean().optional(),
-        completion: z.enum(["quiz", "acknowledgement"]).optional(),
         videoUrl: z.string().url().optional().or(z.literal("")),
       }),
       req.body,
     );
     if (!parsed.success) return fail(res, 400, parsed.error.issues[0].message);
+    const willBePublished = parsed.data.published ?? lesson.published;
+    if (
+      willBePublished &&
+      !(await Quiz.exists({ lesson: lesson.id, published: true }))
+    )
+      return fail(
+        res,
+        400,
+        "Publish a quiz for this lesson before making the lesson visible to students.",
+      );
     Object.assign(lesson, parsed.data);
     await lesson.save();
     if (lesson.published) {
@@ -1254,6 +1370,17 @@ router.get(
         ? await facultyOffering(lesson.offering, req.user.id)
         : await studentOffering(lesson.offering, req.user.id);
     if (!offering) return fail(res, 404, "Lesson not found.");
+    if (req.user.role === "student" && !lesson.published)
+      return fail(res, 404, "Lesson not found.");
+    if (
+      req.user.role === "student" &&
+      !(await Quiz.exists({ lesson: lesson._id, published: true }))
+    )
+      return fail(
+        res,
+        404,
+        "This lesson is still being prepared. Its quiz must be published first.",
+      );
     if (
       req.user.role === "student" &&
       !(await lessonAccess(lesson, req.user.id))
@@ -1297,35 +1424,8 @@ router.get(
 router.post(
   "/lessons/:lessonId/complete",
   allowRoles("student"),
-  asyncRoute(async (req, res) => {
-    const lesson = id.safeParse(req.params.lessonId).success
-      ? await Lesson.findById(req.params.lessonId)
-      : null;
-    if (
-      !lesson ||
-      lesson.completion !== "acknowledgement" ||
-      !(await lessonAccess(lesson, req.user.id))
-    )
-      return fail(
-        res,
-        403,
-        "This lesson requires its assessment before it can be completed.",
-      );
-    await Progress.updateOne(
-      { student: req.user.id, offering: lesson.offering, lesson: lesson.id },
-      {
-        $set: { completedAt: new Date() },
-        $setOnInsert: {
-          student: req.user.id,
-          offering: lesson.offering,
-          lesson: lesson.id,
-        },
-      },
-      { upsert: true },
-    );
-    await grantNextLesson(lesson, req.user.id);
-    return success(res, { completed: true });
-  }),
+  (_req, res) =>
+    fail(res, 410, "Lessons can only be completed by passing their published quiz."),
 );
 
 router.put(
@@ -1339,9 +1439,9 @@ router.put(
       return fail(res, 404, "Lesson not found.");
     const question = z.object({
       type: z.enum(["multiple-choice", "true-false", "short-answer"]),
-      prompt: z.string().min(1).max(1000),
-      choices: z.array(z.string().max(250)).max(8).optional(),
-      answer: z.string().min(1).max(500),
+      prompt: z.string().trim().min(1).max(1000),
+      choices: z.array(z.string().trim().min(1).max(250)).max(8).optional(),
+      answer: z.string().trim().min(1).max(500),
       points: z.number().min(1).max(100).default(1),
       explanation: z.string().max(1000).optional(),
     });
@@ -1352,30 +1452,81 @@ router.put(
         timeLimitMinutes: z.literal(10).default(10),
         availableFrom: z.coerce.date().optional(),
         deadline: z.coerce.date().optional(),
-        randomizeQuestions: z.boolean().default(false),
-        randomizeChoices: z.boolean().default(false),
+        randomizeQuestions: z.boolean().default(true),
+        randomizeChoices: z.boolean().default(true),
         published: z.boolean(),
         questions: z.array(question).min(1).max(20),
       }),
       req.body,
     );
     if (!parsed.success) return fail(res, 400, parsed.error.issues[0].message);
+    if (lesson.published && !parsed.data.published)
+      return fail(
+        res,
+        400,
+        "Unpublish the lesson before taking its quiz offline.",
+      );
     for (const item of parsed.data.questions)
       if (
         item.type === "multiple-choice" &&
-        (!item.choices?.length || !item.choices.includes(item.answer))
+        (!item.choices ||
+          item.choices.length < 2 ||
+          !item.choices.includes(item.answer))
       )
         return fail(
           res,
           400,
           "Multiple choice answers must match one of the choices.",
         );
+      else if (
+        item.type === "true-false" &&
+        !["True", "False"].includes(item.answer)
+      )
+        return fail(res, 400, "True-or-false answers must be True or False.");
     const quiz = await Quiz.findOneAndUpdate(
       { lesson: lesson.id },
       { ...parsed.data },
       { upsert: true, new: true, runValidators: true },
     );
     return success(res, quiz);
+  }),
+);
+
+router.get(
+  "/quizzes/:quizId/sessions/current",
+  allowRoles("student"),
+  asyncRoute(async (req, res) => {
+    const quiz = id.safeParse(req.params.quizId).success
+      ? await Quiz.findById(req.params.quizId).select("+questions.answer")
+      : null;
+    if (!quiz || !quiz.published) return fail(res, 404, "Quiz not found.");
+    const lesson = await Lesson.findById(quiz.lesson);
+    if (!lesson || !(await lessonAccess(lesson, req.user.id)))
+      return fail(res, 403, "This lesson is still locked.");
+    const active = await QuizSession.findOne({ student: req.user.id, quiz: quiz.id });
+    if (!active) return success(res, { session: null });
+    if (!active.attemptNumber) return success(res, { session: null, starting: true });
+    const expiresAt = quizExpiresAt(active.startedAt, quiz.timeLimitMinutes ?? 10);
+    if (new Date() >= expiresAt) {
+      const attempt = await recordExpiredAttempt({
+        session: active,
+        quiz,
+        lesson,
+        studentId: req.user.id,
+        now: new Date(),
+      });
+      return success(res, { session: null, expired: true, ...(attempt ? { attempt } : {}) });
+    }
+    return success(res, {
+      session: {
+        id: active.id,
+        attemptNumber: active.attemptNumber,
+        attemptsAllowed: quiz.attemptsAllowed,
+        startedAt: active.startedAt,
+        expiresAt,
+      },
+      quiz: quizForSession(quiz, active),
+    });
   }),
 );
 
@@ -1448,13 +1599,14 @@ router.post(
     }
 
     const questionIds = quiz.questions.map((question) => question._id);
-    const questionOrder = quiz.randomizeQuestions
-      ? shuffle(questionIds, () => randomInt(0, 0x100000000) / 0x100000000)
-      : questionIds;
+    const questionOrder = shuffle(
+      questionIds,
+      () => randomInt(0, 0x100000000) / 0x100000000,
+    );
     const choiceOrders = quiz.questions.map((question) => ({
       questionId: question._id,
       choices:
-        question.type === "multiple-choice" && quiz.randomizeChoices
+        question.type === "multiple-choice"
           ? shuffle(
               question.choices,
               () => randomInt(0, 0x100000000) / 0x100000000,
@@ -1746,7 +1898,7 @@ router.get(
       .populate("student", "firstName lastName")
       .populate({ path: "quiz", populate: { path: "lesson", select: "title" } })
       .lean();
-    const weights = offering.gradeWeights || { quiz: 70, other: 30 };
+    const weights = { quiz: 100, other: 0 };
     const studentIds =
       req.user.role === "faculty"
         ? offering.students.map(String)
@@ -1754,6 +1906,33 @@ router.get(
     const roster = await User.find({ _id: { $in: studentIds } })
       .select("firstName lastName email")
       .lean();
+    let quizColumns = [];
+    if (req.user.role === "faculty") {
+      const lessons = await Lesson.find({ offering: offering.id })
+        .select("title sequence")
+        .lean();
+      const lessonById = new Map(
+        lessons.map((lesson) => [String(lesson._id), lesson]),
+      );
+      const quizzes = await Quiz.find({
+        lesson: { $in: lessons.map((lesson) => lesson._id) },
+      })
+        .select("lesson")
+        .lean();
+      quizColumns = quizzes
+        .map((quiz) => {
+          const lesson = lessonById.get(String(quiz.lesson));
+          return lesson
+            ? {
+                id: String(quiz._id),
+                title: lesson.title,
+                sequence: lesson.sequence,
+              }
+            : null;
+        })
+        .filter(Boolean)
+        .sort((a, b) => a.sequence - b.sequence);
+    }
     const rosterById = new Map(
       roster.map((student) => [String(student._id), student]),
     );
@@ -1773,11 +1952,6 @@ router.get(
           String(grade.student?._id || grade.student) === studentId &&
           grade.category.toLowerCase() !== "quiz",
       );
-      const grade = calculateCourseGrade({
-        quizScores,
-        otherGrades: studentGrades,
-        weights,
-      });
       const quizAverage = quizScores.length
         ? Math.round(
             (quizScores.reduce((total, score) => total + score, 0) /
@@ -1795,6 +1969,7 @@ router.get(
               studentGrades.length,
           ) / 100
         : null;
+      const grade = quizAverage;
       return {
         studentId,
         student: rosterById.get(studentId) || null,
@@ -1803,7 +1978,13 @@ router.get(
         otherAverage,
       };
     });
-    return success(res, { grades, attempts, weights, courseGrades });
+    return success(res, {
+      grades,
+      attempts,
+      weights,
+      courseGrades,
+      quizColumns,
+    });
   }),
 );
 
@@ -1814,19 +1995,12 @@ router.put(
     if (!id.safeParse(req.params.offeringId).success)
       return fail(res, 400, "Invalid course offering.");
     const offering = await facultyOffering(req.params.offeringId, req.user.id);
-    const parsed = isValid(
-      z.object({
-        quiz: z.number().min(0).max(100),
-        other: z.number().min(0).max(100),
-      }),
-      req.body,
-    );
     if (!offering) return fail(res, 404, "Course offering not found.");
-    if (!parsed.success || parsed.data.quiz + parsed.data.other !== 100)
-      return fail(res, 400, "Course grade weights must add up to 100%.");
-    offering.gradeWeights = parsed.data;
-    await offering.save();
-    return success(res, { weights: offering.gradeWeights });
+    return fail(
+      res,
+      410,
+      "Course grades are calculated from quiz results only; grading weights are no longer configurable.",
+    );
   }),
 );
 
@@ -1840,8 +2014,8 @@ router.put(
     const parsed = isValid(
       z.object({
         student: id,
-        category: z.string().min(1).max(40),
-        title: z.string().min(1).max(120),
+        category: z.string().trim().min(1).max(40),
+        title: z.string().trim().min(1).max(120),
         score: z.number().min(0),
         maxScore: z.number().positive(),
         remarks: z.string().max(1000).optional(),

@@ -34,6 +34,7 @@ function App() {
     <AuthContext.Provider value={{ session, setSession, notify }}>
       <Routes>
         <Route path="/" element={session ? <Workspace /> : <LandingPage />} />
+        <Route path="/welcome" element={<LandingPage />} />
         <Route path="/faculty" element={<FacultyDirectoryPage />} />
         <Route
           path="/login"

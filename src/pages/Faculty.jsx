@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowRight,
+  ArrowUpRight,
   BookOpen,
   Check,
   Download,
@@ -12,6 +13,7 @@ import {
   Users,
 } from "lucide-react";
 import { api, send } from "../api.js";
+import { validateRequiredValues } from "../formValidation.js";
 import { BrandIcon } from "../BrandIcon.jsx";
 import {
   useAuth,
@@ -21,6 +23,7 @@ import {
   EmptyPanel,
   fullName,
   initials,
+  semesterLabel,
 } from "../shared.jsx";
 
 export function StudentsPage() {
@@ -49,22 +52,11 @@ export function StudentsPage() {
   }, [selected]);
   async function enroll(event) {
     event.preventDefault();
+    if (!validateRequiredValues(event.currentTarget)) return;
     try {
       await api(`/offerings/${selected}/enrollments`, send("POST", { email }));
       setEmail("");
       notify("Student enrolled in this course.");
-      await loadOfferingRoster();
-    } catch (err) {
-      notify(err.message);
-    }
-  }
-  async function changeYearLevel(studentId, currentYearLevel) {
-    try {
-      await api(`/offerings/${selected}/students/${studentId}/profile`, {
-        method: "PATCH",
-        body: JSON.stringify({ currentYearLevel }),
-      });
-      notify("Student year level updated. Their student ID remains the same.");
       await loadOfferingRoster();
     } catch (err) {
       notify(err.message);
@@ -297,23 +289,7 @@ export function StudentsPage() {
                         <td>{student.profile?.studentId || "—"}</td>
                         <td>{student.profile?.program?.code || "—"}</td>
                         <td>
-                          {student.profile ? (
-                            <select
-                              className="year-level-select"
-                              value={student.profile.currentYearLevel}
-                              onChange={(event) =>
-                                changeYearLevel(student._id, event.target.value)
-                              }
-                            >
-                              {student.profile.program.yearLevels.map(
-                                (level) => (
-                                  <option key={level}>{level}</option>
-                                ),
-                              )}
-                            </select>
-                          ) : (
-                            "—"
-                          )}
+                          {student.profile?.currentYearLevel || "Not set"}
                         </td>
                       </tr>
                     ))}
@@ -367,7 +343,8 @@ export function StudentClassmatesPage() {
                   </span>
                   <h2>{offering.course?.title}</h2>
                   <p>
-                    {offering.semester} · {offering.academicYear?.label}
+                    {semesterLabel(offering.semester)} ·{" "}
+                    {offering.academicYear?.label}
                   </p>
                 </div>
                 <span className="classmates-total">
@@ -408,20 +385,23 @@ export function FacultyDirectoryPage() {
   const { session } = useAuth();
   if (loading) return <Loading />;
   return (
-    <div className="page-shell">
-      <header className="faculty-directory-nav">
-        <Link className="brand" to="/" aria-label="Modulink home">
+    <main className="landing-page faculty-directory-page">
+      <header className="landing-nav">
+        <Link className="brand" to="/welcome" aria-label="Modulink home">
           <BrandIcon /> Modulink
         </Link>
-        <nav aria-label="Directory navigation">
-          <Link to="/">Home</Link>
+        <nav aria-label="Main navigation">
+          <Link to="/welcome">Home</Link>
+          <a href="#departments">Departments</a>
           {session ? (
             <Link className="button primary" to="/">
-              Your workspace
+              Your workspace <ArrowRight size={15} />
             </Link>
           ) : (
             <>
-              <Link to="/login">Sign in</Link>
+              <Link className="landing-signin" to="/login">
+                Sign in <ArrowUpRight size={14} />
+              </Link>
               <Link className="button primary" to="/register">
                 Create an account
               </Link>
@@ -429,52 +409,54 @@ export function FacultyDirectoryPage() {
           )}
         </nav>
       </header>
-      <PageHeader
-        eyebrow="ALL DEPARTMENTS"
-        title="Faculty directory."
-        detail="Meet the faculty across campus, grouped by department."
-      />
-      {error ? (
-        <EmptyPanel title="Couldn’t load the faculty list." body={error} />
-      ) : (
-        <div className="faculty-departments">
-          {data?.map((department) => (
-            <section className="faculty-department" key={department.code}>
-              <div className="faculty-department-heading">
-                <span className="eyebrow">{department.code}</span>
-                <h2>{department.name}</h2>
-                <span className="faculty-count">
-                  {department.faculty.length} faculty
-                </span>
-              </div>
-              {department.faculty.length ? (
-                <div className="faculty-directory-grid">
-                  {department.faculty.map((person) => (
-                    <article
-                      className="panel faculty-directory-card"
-                      key={person.id}
-                    >
-                      <span className="avatar">{initials(person)}</span>
-                      <div>
-                        <h3>{fullName(person)}</h3>
-                        <span className="faculty-directory-label">
-                          FACULTY MEMBER
-                        </span>
-                      </div>
-                    </article>
-                  ))}
+      <div className="faculty-directory-content">
+        <PageHeader
+          eyebrow="ALL DEPARTMENTS"
+          title="Faculty directory."
+          detail="Meet the faculty across campus, grouped by department."
+        />
+        {error ? (
+          <EmptyPanel title="Could not load the faculty list." body={error} />
+        ) : (
+          <div className="faculty-departments" id="departments">
+            {data?.map((department) => (
+              <section className="faculty-department" key={department.code}>
+                <div className="faculty-department-heading">
+                  <span className="eyebrow">{department.code}</span>
+                  <h2>{department.name}</h2>
+                  <span className="faculty-count">
+                    {department.faculty.length} faculty
+                  </span>
                 </div>
-              ) : (
-                <p className="faculty-empty">
-                  Faculty members will appear here when their profiles are set
-                  up.
-                </p>
-              )}
-            </section>
-          ))}
-        </div>
-      )}
-    </div>
+                {department.faculty.length ? (
+                  <div className="faculty-directory-grid">
+                    {department.faculty.map((person) => (
+                      <article
+                        className="panel faculty-directory-card"
+                        key={person.id}
+                      >
+                        <span className="avatar">{initials(person)}</span>
+                        <div>
+                          <h3>{fullName(person)}</h3>
+                          <span className="faculty-directory-label">
+                            FACULTY MEMBER
+                          </span>
+                        </div>
+                      </article>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="faculty-empty">
+                    Faculty members will appear here when their profiles are set
+                    up.
+                  </p>
+                )}
+              </section>
+            ))}
+          </div>
+        )}
+      </div>
+    </main>
   );
 }
 
@@ -516,6 +498,23 @@ export function GradesPage() {
             ),
       )
     : [];
+  const quizScoreLookup = new Map();
+  for (const attempt of [...(gradeData?.attempts || [])].sort(
+    (a, b) => new Date(b.submittedAt) - new Date(a.submittedAt),
+  )) {
+    const studentId = String(attempt.student?._id || attempt.student);
+    const quizId = String(attempt.quiz?._id || attempt.quiz);
+    const key = `${studentId}:${quizId}`;
+    if (attempt.quiz?._id && !quizScoreLookup.has(key))
+      quizScoreLookup.set(key, attempt);
+  }
+  const orderedQuizSummary = [...orderedCourseGrades].sort((a, b) =>
+    reportSort === "score"
+      ? (b.quizAverage ?? -1) - (a.quizAverage ?? -1) ||
+        (a.student?.lastName || "").localeCompare(b.student?.lastName || "")
+      : (a.student?.lastName || "").localeCompare(b.student?.lastName || "") ||
+        (a.student?.firstName || "").localeCompare(b.student?.firstName || ""),
+  );
   useEffect(() => {
     if (selected)
       api(`/offerings/${selected}/grades`)
@@ -589,10 +588,47 @@ export function GradesPage() {
           item.grade ?? "",
         ]),
     ];
+    saveCsv("modulink-quiz-attempt-details.csv", rows);
+  }
+  function downloadSummarySpreadsheet() {
+    if (!gradeData) return;
+    const quizColumns = gradeData.quizColumns || [];
+    const rows = [
+      [
+        "Surname",
+        "First name",
+        ...quizColumns.map((quiz) => `Lesson ${quiz.sequence}: ${quiz.title}`),
+        "Quiz average (latest attempt per quiz)",
+        "Other coursework average (not included)",
+        "Quiz-only course grade",
+      ],
+      ...orderedQuizSummary.map((item) => [
+        item.student?.lastName || "",
+        item.student?.firstName || "",
+        ...quizColumns.map((quiz) => {
+          const attempt = quizScoreLookup.get(`${item.studentId}:${quiz.id}`);
+          return attempt ? `${attempt.percent ?? 0}%` : "";
+        }),
+        item.quizAverage == null ? "" : `${item.quizAverage}%`,
+        item.otherAverage == null ? "" : `${item.otherAverage}%`,
+        item.grade == null ? "" : `${item.grade}%`,
+      ]),
+    ];
+    const courseCode = offerings
+      ?.find((offering) => offering._id === selected)
+      ?.course?.code?.toLowerCase()
+      .replace(/[^a-z0-9-]+/g, "-");
+    saveCsv(`modulink-${courseCode || "course"}-quiz-score-summary.csv`, rows);
+  }
+  function saveCsv(filename, rows) {
     const csv = rows
       .map((row) =>
         row
-          .map((value) => `"${String(value ?? "").replaceAll('"', '""')}"`)
+          .map((value) => {
+            const text = String(value ?? "");
+            const safe = /^[\t\r ]*[=+\-@]/.test(text) ? `'${text}` : text;
+            return `"${safe.replaceAll('"', '""')}"`;
+          })
           .join(","),
       )
       .join("\r\n");
@@ -601,7 +637,7 @@ export function GradesPage() {
     );
     const link = document.createElement("a");
     link.href = url;
-    link.download = "modulink-quiz-scores.csv";
+    link.download = filename;
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -617,7 +653,7 @@ export function GradesPage() {
         }
       />
       <section className="panel gradebook-panel">
-        <div className="roster-toolbar">
+        <div className="roster-toolbar no-print">
           <label>
             Course offering
             <select
@@ -644,6 +680,13 @@ export function GradesPage() {
         ) : gradeData ? (
           <>
             {faculty && (
+              <h2 className="grade-report-print-title">
+                {offerings?.find((item) => item._id === selected)?.course
+                  ?.title || "Course"}{" "}
+                · Quiz score report
+              </h2>
+            )}
+            {faculty && (
               <div className="gradebook-actions no-print">
                 <label>
                   Sort summary by
@@ -663,11 +706,72 @@ export function GradesPage() {
                 </button>
                 <button
                   className="button secondary"
+                  onClick={downloadSummarySpreadsheet}
+                >
+                  <Download size={15} /> Quiz score summary
+                </button>
+                <button
+                  className="button secondary"
                   onClick={downloadSpreadsheet}
                 >
-                  <Download size={15} /> Download spreadsheet
+                  <FileText size={15} /> Attempt details
                 </button>
               </div>
+            )}
+            {faculty && (
+              <>
+                <h2 className="table-section-title">
+                  All quiz scores per student
+                </h2>
+                {gradeData.quizColumns?.length ? (
+                  <div className="table-wrap">
+                    <table className="quiz-score-summary-table">
+                      <thead>
+                        <tr>
+                          <th>STUDENT</th>
+                          {gradeData.quizColumns.map((quiz) => (
+                            <th key={quiz.id}>
+                              LESSON {String(quiz.sequence).padStart(2, "0")} ·{" "}
+                              {quiz.title}
+                            </th>
+                          ))}
+                          <th>QUIZ AVG.</th>
+                          <th>COURSE GRADE</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {orderedQuizSummary.map((item) => (
+                          <tr key={item.studentId}>
+                            <td>{fullName(item.student) || "Student"}</td>
+                            {gradeData.quizColumns.map((quiz) => {
+                              const attempt = quizScoreLookup.get(
+                                `${item.studentId}:${quiz.id}`,
+                              );
+                              return (
+                                <td key={quiz.id}>
+                                  {attempt ? `${attempt.percent ?? 0}%` : "—"}
+                                </td>
+                              );
+                            })}
+                            <td>
+                              {item.quizAverage == null
+                                ? "—"
+                                : `${item.quizAverage}%`}
+                            </td>
+                            <td>
+                              {item.grade == null ? "—" : `${item.grade}%`}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="muted table-empty">
+                    No quizzes have been added to this course yet.
+                  </p>
+                )}
+              </>
             )}
             <h2 className="table-section-title">Quiz attempts</h2>
             {gradeData.attempts.length ? (
@@ -707,7 +811,7 @@ export function GradesPage() {
                         {faculty && (
                           <td>
                             <button
-                              className="text-action"
+                              className="text-action no-print"
                               onClick={() => resetProgress(attempt)}
                             >
                               Reset progress
@@ -723,23 +827,19 @@ export function GradesPage() {
               <p className="muted table-empty">No quiz attempts yet.</p>
             )}
             {faculty && (
-              <>
-                <GradeWeights
-                  offeringId={selected}
-                  weights={gradeData.weights}
-                  onSaved={async () =>
-                    setGradeData(await api(`/offerings/${selected}/grades`))
-                  }
-                />
+              <div className="no-print">
                 <GradeEntry
                   offeringId={selected}
                   onSaved={async () =>
                     setGradeData(await api(`/offerings/${selected}/grades`))
                   }
                 />
-              </>
+              </div>
             )}
             <h2 className="table-section-title">Course grades</h2>
+            <p className="muted gradebook-calculation-note">
+              Course grades are calculated from quiz scores only. Other coursework is recorded separately and does not affect this grade.
+            </p>
             {gradeData.courseGrades.length ? (
               <div className="table-wrap">
                 <table>
@@ -747,8 +847,8 @@ export function GradesPage() {
                     <tr>
                       {faculty && <th>STUDENT</th>}
                       <th>QUIZ AVERAGE</th>
-                      <th>OTHER COURSEWORK</th>
-                      <th>WEIGHTED COURSE GRADE</th>
+                      <th>OTHER COURSEWORK (NOT COUNTED)</th>
+                      <th>QUIZ-ONLY COURSE GRADE</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -826,63 +926,6 @@ export function GradesPage() {
   );
 }
 
-function GradeWeights({ offeringId, weights, onSaved }) {
-  const { notify } = useAuth();
-  async function save(event) {
-    event.preventDefault();
-    const values = Object.fromEntries(new FormData(event.currentTarget));
-    try {
-      await api(
-        `/offerings/${offeringId}/grading`,
-        send("PUT", {
-          quiz: Number(values.quiz),
-          other: Number(values.other),
-        }),
-      );
-      notify("Course grading weights updated.");
-      await onSaved();
-    } catch (error) {
-      notify(error.message);
-    }
-  }
-  return (
-    <form className="grade-entry grade-weights" onSubmit={save}>
-      <div>
-        <span className="eyebrow">COURSE GRADE WEIGHTS</span>
-        <p>
-          Set how quiz and other coursework combine. The weights must total
-          100%.
-        </p>
-      </div>
-      <div className="grade-entry-fields">
-        <label>
-          Quiz assessments %
-          <input
-            name="quiz"
-            type="number"
-            min="0"
-            max="100"
-            defaultValue={weights?.quiz ?? 70}
-            required
-          />
-        </label>
-        <label>
-          Other coursework %
-          <input
-            name="other"
-            type="number"
-            min="0"
-            max="100"
-            defaultValue={weights?.other ?? 30}
-            required
-          />
-        </label>
-        <button className="button secondary">Update weights</button>
-      </div>
-    </form>
-  );
-}
-
 export function GradeEntry({ offeringId, onSaved }) {
   const { notify } = useAuth();
   const [students, setStudents] = useState([]);
@@ -893,13 +936,15 @@ export function GradeEntry({ offeringId, onSaved }) {
   }, [offeringId]);
   async function save(event) {
     event.preventDefault();
-    const values = Object.fromEntries(new FormData(event.currentTarget));
+    const gradeForm = event.currentTarget;
+    if (!validateRequiredValues(gradeForm)) return;
+    const values = Object.fromEntries(new FormData(gradeForm));
     values.score = Number(values.score);
     values.maxScore = Number(values.maxScore);
     try {
       await api(`/offerings/${offeringId}/grades`, send("PUT", values));
       notify("Course grade saved.");
-      event.currentTarget.reset();
+      gradeForm.reset();
       await onSaved();
     } catch (error) {
       notify(error.message);
@@ -910,7 +955,7 @@ export function GradeEntry({ offeringId, onSaved }) {
     <form className="grade-entry" onSubmit={save}>
       <div>
         <span className="eyebrow">ADD OR EDIT A COURSE GRADE</span>
-        <p>Quiz scores remain separate from course grades.</p>
+        <p>Course grade calculation uses quiz scores only; this entry is kept as a separate record.</p>
       </div>
       <div className="grade-entry-fields">
         <select name="student" required defaultValue="">
@@ -976,8 +1021,9 @@ export function AcademicSetup() {
   }, [initial]);
   async function create(event, endpoint, transform = (value) => value) {
     event.preventDefault();
-    setBusy(true);
     const form = event.currentTarget;
+    if (!validateRequiredValues(form)) return;
+    setBusy(true);
     const values = transform(Object.fromEntries(new FormData(form)));
     try {
       await api(endpoint, send("POST", values));
@@ -994,12 +1040,14 @@ export function AcademicSetup() {
   }
   async function updateDepartment(event) {
     event.preventDefault();
+    const form = event.currentTarget;
+    if (!validateRequiredValues(form)) return;
     setBusy(true);
     try {
       await api(
         "/auth/department",
         send("PATCH", {
-          department: new FormData(event.currentTarget).get("department"),
+          department: new FormData(form).get("department"),
         }),
       );
       setSession(await api("/auth/me"));
@@ -1166,13 +1214,14 @@ export function AcademicSetup() {
           >
             <label>
               Course code
-              <input name="code" placeholder="IT 101" required />
+              <input name="code" placeholder="IT 101" minLength={2} required />
             </label>
             <label>
               Course title
               <input
                 name="title"
                 placeholder="Introduction to Computing"
+                minLength={2}
                 required
               />
             </label>
@@ -1193,10 +1242,10 @@ export function AcademicSetup() {
             </label>
             <label>
               Semester
-              <select name="semester">
+              <select name="semester" required>
                 <option>First Semester</option>
                 <option>Second Semester</option>
-                <option>Summer</option>
+                <option>Third Semester</option>
               </select>
             </label>
             <label>

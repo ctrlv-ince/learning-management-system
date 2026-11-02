@@ -12,6 +12,7 @@ import {
 import { api, send } from "../api.js";
 import { useAuth } from "../shared.jsx";
 import { BrandIcon } from "../BrandIcon.jsx";
+import { validateRequiredValues } from "../formValidation.js";
 
 export function AuthPage({ register = false }) {
   const { setSession, notify } = useAuth();
@@ -46,7 +47,9 @@ export function AuthPage({ register = false }) {
   }, [register]);
   async function submit(event) {
     event.preventDefault();
-    const values = Object.fromEntries(new FormData(event.currentTarget));
+    const form = event.currentTarget;
+    if (!validateRequiredValues(form)) return;
+    const values = Object.fromEntries(new FormData(form));
     if (register && values.password !== values.confirmPassword) {
       notify("Your passwords do not match.");
       return;
@@ -224,11 +227,11 @@ export function AuthPage({ register = false }) {
               </>
             )}
             <label>
-              Username
+              {register ? "Username" : "Username or email"}
               <input
-                name="username"
+                name={register ? "username" : "identifier"}
                 type="text"
-                placeholder={register ? "e.g. alex.reyes" : "Your username"}
+                placeholder={register ? "e.g. alex.reyes" : "Username or email address"}
                 minLength={3}
                 maxLength={register ? 32 : 254}
                 pattern={register ? "[A-Za-z0-9._-]+" : undefined}

@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { BrandIcon } from "../BrandIcon.jsx";
+import { useAuth } from "../shared.jsx";
 
 const highlights = [
   {
@@ -28,6 +29,7 @@ const highlights = [
 ];
 
 export function LandingPage() {
+  const { session } = useAuth();
   return (
     <main className="landing-page">
       <header className="landing-nav">
@@ -39,12 +41,20 @@ export function LandingPage() {
           <Link className="landing-signin" to="/faculty">
             Faculty
           </Link>
-          <Link className="landing-signin" to="/login">
-            Sign in <ArrowUpRight size={14} />
-          </Link>
-          <Link className="button primary" to="/register">
-            Create an account <ArrowRight size={15} />
-          </Link>
+          {session ? (
+            <Link className="button primary" to="/">
+              Your workspace <ArrowRight size={15} />
+            </Link>
+          ) : (
+            <>
+              <Link className="landing-signin" to="/login">
+                Sign in <ArrowUpRight size={14} />
+              </Link>
+              <Link className="button primary" to="/register">
+                Create an account <ArrowRight size={15} />
+              </Link>
+            </>
+          )}
         </nav>
       </header>
 
@@ -61,12 +71,25 @@ export function LandingPage() {
             together so students and faculty can focus on the work ahead.
           </p>
           <div className="landing-cta">
-            <Link className="button primary" to="/register">
-              Get started <ArrowRight size={16} />
-            </Link>
-            <Link className="landing-text-link" to="/login">
-              I already have an account
-            </Link>
+            {session ? (
+              <>
+                <Link className="button primary" to="/">
+                  Go to your workspace <ArrowRight size={16} />
+                </Link>
+                <Link className="landing-text-link" to="/faculty">
+                  Browse faculty
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link className="button primary" to="/register">
+                  Get started <ArrowRight size={16} />
+                </Link>
+                <Link className="landing-text-link" to="/login">
+                  I already have an account
+                </Link>
+              </>
+            )}
           </div>
           <div className="landing-caption">
             <span className="landing-caption-mark" />A steady place to teach,
@@ -153,8 +176,9 @@ export function LandingPage() {
           <BrandIcon /> Modulink
         </Link>
         <span>LEARN AT YOUR OWN PACE</span>
-        <Link to="/register">
-          Join your learning space <ArrowUpRight size={13} />
+        <Link to={session ? "/" : "/register"}>
+          {session ? "Return to your workspace" : "Join your learning space"}{" "}
+          <ArrowUpRight size={13} />
         </Link>
       </footer>
     </main>

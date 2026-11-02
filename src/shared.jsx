@@ -14,6 +14,8 @@ export const initials = (person) =>
     .filter(Boolean)
     .join("")
     .toUpperCase();
+export const semesterLabel = (semester) =>
+  semester === "Summer" ? "Third Semester" : semester;
 
 export function PageHeader({ eyebrow, title, detail, action }) {
   return (
@@ -71,7 +73,8 @@ export function CourseRow({ offering, index, showRoster = false }) {
         </span>
         <strong>{offering.course?.title}</strong>
         <small>
-          {offering.academicYear?.label || "Current year"} · {offering.semester}
+          {offering.academicYear?.label || "Current year"} ·{" "}
+          {semesterLabel(offering.semester)}
         </small>
       </div>
       <div className="course-row-meta">

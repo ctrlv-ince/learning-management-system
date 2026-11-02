@@ -35,6 +35,10 @@ Authentication lives under `/api/auth`. Academic and coursework endpoints live u
 
 The session is an HTTP-only, same-site cookie. Set the exact frontend origin in `CLIENT_ORIGIN`. Production deployments must use HTTPS and a persistent MongoDB database. Uploaded files require an authenticated session and authorization through the associated lesson's course offering.
 
+Faculty can add a PowerPoint from a lesson page using the **Upload a presentation** panel. After upload, **Draft lesson from…** can extract slide text and ask Groq to prepare editable title, description, lesson content, and summary fields. Review the draft before applying it. The extracted text is sent to Groq for processing.
+
+To enable AI drafts, add `GROQ_API_KEY=your-key` to the root `.env` file (the file is gitignored) and restart the server. `GROQ_MODEL` is optional and defaults to `openai/gpt-oss-20b`. The key stays server-side. Without it, PowerPoint upload and in-page viewing still work; AI drafting is disabled.
+
 ## Verification
 
 - `npm test` exercises student ID formatting, server quiz scoring, and access-grant behavior when lessons move.

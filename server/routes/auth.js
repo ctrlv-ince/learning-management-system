@@ -34,7 +34,11 @@ const credentials = z.object({
     .regex(/^[a-zA-Z0-9._-]+$/)
     .optional(),
   email: z.string().email().max(254),
-  password: z.string().min(8).max(128),
+  password: z
+    .string()
+    .min(8)
+    .max(128)
+    .refine((value) => value.trim().length > 0, "Password cannot be blank."),
 });
 const signup = credentials.extend({
   firstName: z.string().trim().min(1).max(80),
@@ -43,19 +47,24 @@ const signup = credentials.extend({
   role: z.enum(["student", "faculty"]),
   program: z.string().optional(),
   enrollmentYear: z.coerce.number().int().min(2000).max(2100).optional(),
-  currentYearLevel: z.string().max(40).optional(),
+  currentYearLevel: z.string().trim().min(2).max(40).optional(),
   section: z.string().optional(),
   department: z.enum(departmentNames).optional(),
   privacyAcknowledged: z.literal(true),
 });
 const loginCredentials = z
   .object({
+    identifier: z.string().trim().min(3).max(254).optional(),
     username: z.string().trim().min(3).max(254).optional(),
     email: z.string().email().max(254).optional(),
-    password: z.string().min(8).max(128),
+    password: z
+      .string()
+      .min(8)
+      .max(128)
+      .refine((value) => value.trim().length > 0, "Password cannot be blank."),
   })
-  .refine((data) => data.username || data.email, {
-    message: "Enter your username and password.",
+  .refine((data) => data.identifier || data.username || data.email, {
+    message: "Enter your username or email and password.",
   });
 
 function setSession(res, user) {
@@ -260,8 +269,9 @@ router.post(
   asyncRoute(async (req, res) => {
     const parsed = loginCredentials.safeParse(req.body);
     if (!parsed.success)
-      return fail(res, 400, "Enter a valid username and password.");
-    const identity = parsed.data.username || parsed.data.email;
+      return fail(res, 400, "Enter a valid username or email and password.");
+    const identity =
+      parsed.data.identifier || parsed.data.username || parsed.data.email;
     const user = await User.findOne({
       $or: [
         { username: identity.toLowerCase() },
@@ -272,7 +282,7 @@ router.post(
       !user ||
       !(await bcrypt.compare(parsed.data.password, user.passwordHash))
     )
-      return fail(res, 401, "Username or password is incorrect.");
+      return fail(res, 401, "Username/email or password is incorrect.");
     setSession(res, user);
     return success(res, {
       user: {

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Activity,
@@ -14,6 +15,8 @@ import {
   Users,
 } from "lucide-react";
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis } from "recharts";
+import { api, send } from "../api.js";
+import { validateRequiredValues } from "../formValidation.js";
 import {
   useAuth,
   useData,
@@ -207,23 +210,78 @@ export function FacultyDashboard({ data }) {
 }
 
 export function StudentDashboard({ data, profile }) {
+  const { session, notify } = useAuth();
   const progress = data.progress;
   const marks = data.weeklyActivity || [];
+  const [yearLevel, setYearLevel] = useState(profile?.currentYearLevel || "");
+  const [sectionName, setSectionName] = useState(
+    profile?.section?.name || "Section not assigned",
+  );
+  const [savingYearLevel, setSavingYearLevel] = useState(false);
+  useEffect(() => {
+    setYearLevel(profile?.currentYearLevel || "");
+    setSectionName(profile?.section?.name || "Section not assigned");
+  }, [profile?.currentYearLevel, profile?.section?.name]);
+  async function updateYearLevel(event) {
+    event.preventDefault();
+    if (!validateRequiredValues(event.currentTarget)) return;
+    if (!yearLevel || yearLevel === profile?.currentYearLevel) return;
+    setSavingYearLevel(true);
+    try {
+      const updated = await api(
+        "/student-profile/year-level",
+        send("PATCH", { currentYearLevel: yearLevel }),
+      );
+      setYearLevel(updated.currentYearLevel);
+      setSectionName(updated.section?.name || "Section not assigned");
+      notify("Your year level was updated.");
+    } catch (error) {
+      setYearLevel(profile?.currentYearLevel || "");
+      notify(error.message);
+    } finally {
+      setSavingYearLevel(false);
+    }
+  }
   return (
     <>
       <section className="student-banner">
         <div className="identity">
-          <span className="avatar large">
-            {initials(useAuth().session.user)}
-          </span>
+          <span className="avatar large">{initials(session.user)}</span>
           <div>
             <span className="eyebrow">YOUR ACADEMIC PROFILE</span>
             <h2>{profile?.studentId || "Student profile"}</h2>
             <p>
-              {profile?.program?.code} <span>·</span>{" "}
-              {profile?.currentYearLevel} <span>·</span>{" "}
-              {profile?.section?.name || "Section not assigned"}
+              {profile?.program?.code} <span>&middot;</span> {sectionName}
             </p>
+            {profile?.program?.yearLevels?.length > 0 && (
+              <form
+                className="student-year-level-form"
+                onSubmit={updateYearLevel}
+              >
+                <label htmlFor="student-year-level">Current year level</label>
+                <select
+                  id="student-year-level"
+                  required
+                  value={yearLevel}
+                  onChange={(event) => setYearLevel(event.target.value)}
+                  disabled={savingYearLevel}
+                >
+                  {profile.program.yearLevels.map((level) => (
+                    <option key={level} value={level}>
+                      {level}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="submit"
+                  disabled={
+                    savingYearLevel || yearLevel === profile.currentYearLevel
+                  }
+                >
+                  {savingYearLevel ? "Saving..." : "Save"}
+                </button>
+              </form>
+            )}
           </div>
         </div>
         <div className="banner-divider" />
