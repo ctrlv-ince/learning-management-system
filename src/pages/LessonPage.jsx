@@ -7,6 +7,8 @@ import {
   CircleHelp,
   Clock3,
   FileText,
+  Maximize2,
+  Minimize2,
   Plus,
 } from "lucide-react";
 import { api, apiUpload, send } from "../api.js";
@@ -259,27 +261,7 @@ export function LessonPage() {
               file.name?.toLowerCase().endsWith(".pptx");
             if (isPresentation) {
               const filename = file.url.split("/").pop();
-              return (
-                <section className="presentation-viewer" key={file.url}>
-                  <div className="presentation-viewer-heading">
-                    <div>
-                      <span className="eyebrow">COURSE PRESENTATION</span>
-                      <h3>{file.name}</h3>
-                    </div>
-                    <a className="presentation-download" href={file.url} download>
-                      Download original
-                    </a>
-                  </div>
-                  <iframe
-                    className="presentation-frame"
-                    src={`/uploads/${encodeURIComponent(filename)}/preview`}
-                    title={`Slide preview: ${file.name}`}
-                    loading="lazy"
-                    sandbox=""
-                    referrerPolicy="no-referrer"
-                  />
-                </section>
-              );
+              return <PresentationViewer file={file} key={file.url} />;
             }
             return (
               <a
@@ -353,11 +335,16 @@ export function LessonPage() {
               {faculty ? (
                 <>
                   <p className="muted">
-                    Import a formatted quiz, review every answer, then save it
-                    as a draft. Questions and choices will be shuffled for
-                    students.
+                    Generate questions from a presentation or import a formatted
+                    quiz. Review every answer before publishing. Questions and
+                    choices are shuffled for students.
                   </p>
-                  <QuizImport lessonId={lessonId} quiz={quiz} onSaved={load} />
+                  <QuizImport
+                    lessonId={lessonId}
+                    quiz={quiz}
+                    materials={lesson.materials || []}
+                    onSaved={load}
+                  />
                   <details className="manual-quiz-editor">
                     <summary>
                       {quiz ? "Edit quiz manually" : "Create quiz manually"}
@@ -544,7 +531,118 @@ export function LessonPage() {
   );
 }
 
-function QuizImport({ lessonId, quiz, onSaved }) {
+function PresentationViewer({ file }) {
+  const viewerRef = useRef(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const filename = file.url.split("/").pop();
+
+  useEffect(() => {
+    const syncFullscreen = () => {
+      const active =
+        (document.fullscreenElement || document.webkitFullscreenElement) ===
+        viewerRef.current;
+      setIsFullscreen(active);
+      if (active) setExpanded(false);
+    };
+    const closeExpandedOnEscape = (event) => {
+      if (
+        event.key === "Escape" &&
+        !document.fullscreenElement &&
+        !document.webkitFullscreenElement
+      )
+        setExpanded(false);
+    };
+    document.addEventListener("fullscreenchange", syncFullscreen);
+    document.addEventListener("webkitfullscreenchange", syncFullscreen);
+    document.addEventListener("keydown", closeExpandedOnEscape);
+    return () => {
+      document.removeEventListener("fullscreenchange", syncFullscreen);
+      document.removeEventListener("webkitfullscreenchange", syncFullscreen);
+      document.removeEventListener("keydown", closeExpandedOnEscape);
+    };
+  }, []);
+
+  async function toggleExpandedView() {
+    const viewer = viewerRef.current;
+    const fullscreenElement =
+      document.fullscreenElement || document.webkitFullscreenElement;
+    if (fullscreenElement === viewer) {
+      const exitFullscreen =
+        document.exitFullscreen || document.webkitExitFullscreen;
+      await exitFullscreen?.call(document);
+      return;
+    }
+    if (expanded) {
+      setExpanded(false);
+      return;
+    }
+    const requestFullscreen =
+      viewer?.requestFullscreen || viewer?.webkitRequestFullscreen;
+    if (requestFullscreen) {
+      try {
+        await requestFullscreen.call(viewer);
+        return;
+      } catch {
+        // Use the in-page expansion when fullscreen is blocked by the browser.
+      }
+    }
+    setExpanded(true);
+  }
+
+  return (
+    <section
+      className={`presentation-viewer${expanded ? " presentation-expanded" : ""}`}
+      ref={viewerRef}
+    >
+      <div className="presentation-viewer-heading">
+        <div className="presentation-viewer-title">
+          <span className="eyebrow">COURSE PRESENTATION</span>
+          <h3>{file.name}</h3>
+        </div>
+        <div className="presentation-viewer-actions">
+          <a className="presentation-download" href={file.url} download>
+            Download original
+          </a>
+          <button
+            className="presentation-expand"
+            type="button"
+            onClick={toggleExpandedView}
+            aria-label={
+              isFullscreen
+                ? "Exit full screen"
+                : expanded
+                  ? "Collapse presentation viewer"
+                  : "Expand presentation viewer"
+            }
+            title={
+              isFullscreen
+                ? "Exit full screen (Esc)"
+                : expanded
+                  ? "Collapse viewer (Esc)"
+                  : "Expand viewer"
+            }
+          >
+            {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
+            <span>
+              {isFullscreen ? "Exit full screen" : expanded ? "Collapse" : "Expand"}
+            </span>
+          </button>
+        </div>
+      </div>
+      <iframe
+        className="presentation-frame"
+        src={`/uploads/${encodeURIComponent(filename)}/preview`}
+        title={`Slide preview: ${file.name}`}
+        loading="lazy"
+        sandbox=""
+        referrerPolicy="no-referrer"
+      />
+    </section>
+  );
+}
+
+function QuizImport({ lessonId, quiz, materials = [], onSaved }) {
   const { notify } = useAuth();
   const [busy, setBusy] = useState(false);
   const [passingPercent, setPassingPercent] = useState(quiz?.passingPercent ?? 75);
@@ -553,13 +651,22 @@ function QuizImport({ lessonId, quiz, onSaved }) {
   const [progress, setProgress] = useState(null);
   const [uploadError, setUploadError] = useState("");
   const [questions, setQuestions] = useState([]);
+  const [questionSource, setQuestionSource] = useState("document");
   const [selectedFile, setSelectedFile] = useState(null);
+  const [selectedPresentation, setSelectedPresentation] = useState("");
   const settingsForm = useRef(null);
+  const presentations = materials.filter(
+    (file) => file.name?.toLowerCase().endsWith(".pptx"),
+  );
   useEffect(() => {
     setPassingPercent(quiz?.passingPercent ?? 75);
     setAttemptsAllowed(quiz?.attemptsAllowed ?? 3);
     setPublishQuiz(quiz?.published ?? true);
   }, [quiz?.passingPercent, quiz?.attemptsAllowed, quiz?.published]);
+  useEffect(() => {
+    if (!presentations.some((file) => file.url === selectedPresentation))
+      setSelectedPresentation(presentations[0]?.url || "");
+  }, [materials, selectedPresentation]);
   async function extract(event) {
     event.preventDefault();
     const quizForm = event.currentTarget;
@@ -588,6 +695,7 @@ function QuizImport({ lessonId, quiz, onSaved }) {
           confirmed: false,
         })),
       );
+      setQuestionSource("document");
       notify(
         `${response.questions.length} questions extracted. Review each one.`,
       );
@@ -597,6 +705,34 @@ function QuizImport({ lessonId, quiz, onSaved }) {
     } finally {
       setBusy(false);
       setProgress(null);
+    }
+  }
+  async function generateFromPresentation() {
+    if (!selectedPresentation) {
+      notify("Upload a PowerPoint presentation first.");
+      return;
+    }
+    const filename = selectedPresentation.split("/").pop();
+    setBusy(true);
+    setUploadError("");
+    try {
+      const response = await api(
+        `/lessons/${lessonId}/materials/${encodeURIComponent(filename)}/quiz-draft`,
+        { method: "POST" },
+      );
+      setQuestions(
+        response.questions.map((question) => ({
+          ...question,
+          confirmed: false,
+        })),
+      );
+      setQuestionSource("presentation");
+      notify(`${response.questions.length} quiz questions drafted. Review and confirm every answer.`);
+    } catch (error) {
+      setUploadError(error.message);
+      notify(error.message);
+    } finally {
+      setBusy(false);
     }
   }
   function updateQuestion(index, changes) {
@@ -642,6 +778,11 @@ function QuizImport({ lessonId, quiz, onSaved }) {
   return (
     <div className="quiz-import form-stack">
       <form className="form-stack" onSubmit={extract}>
+        {busy && progress === null && (
+          <p className="muted" role="status" aria-live="polite">
+            Preparing quiz questions. This can take a few seconds…
+          </p>
+        )}
         {busy && progress !== null && (
           <div className="upload-progress" role="status" aria-live="polite">
             <div className="upload-progress-label">
@@ -676,6 +817,40 @@ function QuizImport({ lessonId, quiz, onSaved }) {
           <FileText size={15} /> {busy ? "Extracting…" : "Extract questions"}
         </button>
       </form>
+      <section className="quiz-presentation-generator">
+        <span className="eyebrow">DRAFT FROM A PRESENTATION</span>
+        <p>
+          Generate at least 10 editable multiple-choice questions from the
+          slides. You must review every answer before saving or publishing.
+        </p>
+        {presentations.length ? (
+          <>
+            <label>
+              Presentation
+              <select
+                value={selectedPresentation}
+                onChange={(event) => setSelectedPresentation(event.target.value)}
+              >
+                {presentations.map((file) => (
+                  <option value={file.url} key={file.url}>
+                    {file.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <button
+              className="button secondary"
+              type="button"
+              onClick={generateFromPresentation}
+              disabled={busy || !selectedPresentation}
+            >
+              {busy ? "Generating quiz…" : "Generate quiz from presentation"}
+            </button>
+          </>
+        ) : (
+          <small>Upload a PowerPoint in this lesson to enable quiz generation.</small>
+        )}
+      </section>
       <form
         className="quiz-import-settings"
         ref={settingsForm}
@@ -745,10 +920,14 @@ Answer: A`}</pre>
             saveReviewedQuiz();
           }}
         >
-          <h3>Review {questions.length} extracted questions</h3>
+          <h3>
+            Review {questions.length}{" "}
+            {questionSource === "presentation" ? "generated" : "extracted"} questions
+          </h3>
           <p className="muted">
-            The selected answer is only a suggestion from the document. Verify
-            it yourself.
+            {questionSource === "presentation"
+              ? "These AI-generated questions and answers are suggestions based on the slides. Check each one against the presentation."
+              : "The selected answer is only a suggestion from the document. Verify it yourself."}
           </p>
           {questions.map((question, index) => (
             <fieldset className="editor-question" key={index}>

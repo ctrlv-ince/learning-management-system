@@ -146,7 +146,17 @@ const LessonSchema = new Schema(
     content: String,
     summary: { type: String, maxlength: 5000, default: "" },
     sequence: { type: Number, required: true },
-    materials: [{ name: String, url: String, mimeType: String, size: Number }],
+    materials: [
+      {
+        name: String,
+        url: String,
+        mimeType: String,
+        size: Number,
+        storage: { type: String, enum: ["local", "cloudinary"], default: "local" },
+        cloudinaryPublicId: String,
+        cloudinaryVersion: Number,
+      },
+    ],
     videoUrl: String,
     published: { type: Boolean, default: false },
     completion: {

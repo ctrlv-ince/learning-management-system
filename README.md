@@ -11,7 +11,7 @@ Requirements: Node.js 20 or newer and a reachable MongoDB database.
 3. Start the client and API with `npm run dev`.
 4. Open `http://localhost:5173`. The first faculty account can register, create an academic year, section, and course offering. Faculty can enroll students by registered email or share a course invite code for student requests that faculty approve.
 
-`npm run build` creates the frontend bundle. `npm start` starts Express and serves `dist` when it exists, including the SPA fallback. Uploads are written to the local `uploads/` directory; use persistent private storage when deploying beyond a single local server.
+`npm run build` creates the frontend bundle. `npm start` starts Express and serves `dist` when it exists, including the SPA fallback. Configure `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, and `CLOUDINARY_API_SECRET` in the root `.env` to enable shared lesson material uploads. The API uploads files to Cloudinary as authenticated raw assets and serves them through Modulink's lesson access checks. Quiz-import documents are processed in memory and are not retained.
 
 ## Academic and progression model
 
@@ -35,9 +35,11 @@ Authentication lives under `/api/auth`. Academic and coursework endpoints live u
 
 The session is an HTTP-only, same-site cookie. Set the exact frontend origin in `CLIENT_ORIGIN`. Production deployments must use HTTPS and a persistent MongoDB database. Uploaded files require an authenticated session and authorization through the associated lesson's course offering.
 
-Faculty can add a PowerPoint from a lesson page using the **Upload a presentation** panel. After upload, **Draft lesson from…** can extract slide text and ask Groq to prepare editable title, description, lesson content, and summary fields. Review the draft before applying it. The extracted text is sent to Groq for processing.
+Faculty can add a PowerPoint from a lesson page using the **Upload a presentation** panel. After upload, **Draft lesson from…** can extract slide text and ask Groq to prepare editable lesson fields. In assessment settings, **Generate quiz from presentation** creates multiple-choice questions in Modulink's quiz format. Faculty review and confirm every answer before saving or publishing either AI-generated content. Extracted presentation text is sent to Groq for processing; slide images and speaker notes are not included.
 
 To enable AI drafts, add `GROQ_API_KEY=your-key` to the root `.env` file (the file is gitignored) and restart the server. `GROQ_MODEL` is optional and defaults to `openai/gpt-oss-20b`. The key stays server-side. Without it, PowerPoint upload and in-page viewing still work; AI drafting is disabled.
+
+Cloudinary keys are available in the Cloudinary Console under **Settings → API Keys**. Put the cloud name, API key, and API secret in the matching `CLOUDINARY_*` entries in the root `.env`; never put the API secret in frontend code or commit `.env`. For a deployed staging app, add the same variables to the hosting provider's server environment settings. Existing material records that point to local `uploads/` files are not migrated automatically; re-upload those materials after configuring Cloudinary.
 
 ## Verification
 

@@ -1596,16 +1596,47 @@ button:focus-visible {
   background: #fff;
   border-bottom: 1px solid #e5e9e2;
 }
+.presentation-viewer-title {
+  min-width: 0;
+}
+.presentation-viewer-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: none;
+}
 .presentation-viewer-heading h3 {
   margin: 4px 0 0;
   color: #3b493e;
   font: 600 12px var(--serif);
+  overflow-wrap: anywhere;
 }
 .presentation-download {
   flex: none;
   color: #58745f;
   font-size: 9px;
   font-weight: 650;
+}
+.presentation-expand {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid #dfe6dd;
+  border-radius: 7px;
+  background: #f8faf7;
+  color: #48634e;
+  font: 600 10px "DM Sans", sans-serif;
+  cursor: pointer;
+}
+.presentation-expand:hover {
+  background: #edf3ed;
+}
+.presentation-expand:focus-visible {
+  outline: 2px solid #58745f;
+  outline-offset: 2px;
 }
 .presentation-frame {
   display: block;
@@ -1614,6 +1645,30 @@ button:focus-visible {
   min-height: 430px;
   border: 0;
   background: #eef0ec;
+}
+.presentation-viewer.presentation-expanded .presentation-frame {
+  height: 88vh;
+  min-height: 0;
+  max-height: 1100px;
+}
+.presentation-viewer:fullscreen {
+  display: flex;
+  flex-direction: column;
+  width: 100vw;
+  height: 100vh;
+  max-width: none;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  background: #f1f3ef;
+}
+.presentation-viewer:fullscreen .presentation-viewer-heading {
+  flex: none;
+}
+.presentation-viewer:fullscreen .presentation-frame {
+  flex: 1;
+  height: auto;
+  min-height: 0;
 }
 .lesson-aside {
   display: grid;
@@ -1863,6 +1918,24 @@ button:focus-visible {
 }
 .quiz-import .form-stack {
   gap: 10px;
+}
+.quiz-presentation-generator {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--line, #e5e8df);
+  border-radius: 8px;
+  background: #f8faf7;
+}
+.quiz-presentation-generator p,
+.quiz-presentation-generator small {
+  margin: 0;
+  color: #788078;
+  font-size: 10px;
+  line-height: 1.55;
+}
+.quiz-presentation-generator select {
+  width: 100%;
 }
 .quiz-format-help,
 .manual-quiz-editor {
@@ -3587,6 +3660,25 @@ td small {
   }
 }
 @media (max-width: 650px) {
+  .presentation-viewer-heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    padding: 11px;
+  }
+  .presentation-viewer-title {
+    flex: 1 1 100%;
+  }
+  .presentation-viewer-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .presentation-frame {
+    height: 65vh;
+    min-height: 320px;
+  }
+  .presentation-viewer.presentation-expanded .presentation-frame {
+    height: 88vh;
+  }
   .landing-nav,
   .landing-hero,
   .landing-highlights,
