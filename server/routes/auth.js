@@ -33,7 +33,7 @@ const credentials = z.object({
     .max(32)
     .regex(/^[a-zA-Z0-9._-]+$/)
     .optional(),
-  email: z.string().email().max(254),
+  email: z.string().trim().email().max(254),
   password: z
     .string()
     .min(8)

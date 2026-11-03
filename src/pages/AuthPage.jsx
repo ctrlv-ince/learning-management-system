@@ -160,7 +160,7 @@ export function AuthPage({ register = false }) {
               </button>
             </div>
           )}
-          <form onSubmit={submit} className="form-stack">
+          <form noValidate onSubmit={submit} className="form-stack">
             {register && (
               <label>
                 Department
@@ -231,7 +231,9 @@ export function AuthPage({ register = false }) {
               <input
                 name={register ? "username" : "identifier"}
                 type="text"
-                placeholder={register ? "e.g. alex.reyes" : "Username or email address"}
+                placeholder={
+                  register ? "e.g. alex.reyes" : "Username or email address"
+                }
                 minLength={3}
                 maxLength={register ? 32 : 254}
                 pattern={register ? "[A-Za-z0-9._-]+" : undefined}
@@ -245,8 +247,10 @@ export function AuthPage({ register = false }) {
                 <input
                   name="email"
                   type="email"
+                  title="Enter a valid email address, such as name@example.com."
                   placeholder="you@school.edu"
                   required
+                  maxLength={254}
                   autoComplete="email"
                 />
               </label>
@@ -262,6 +266,7 @@ export function AuthPage({ register = false }) {
                   }
                   required
                   minLength={8}
+                  maxLength={128}
                   autoComplete={register ? "new-password" : "current-password"}
                 />
                 <button
@@ -285,6 +290,7 @@ export function AuthPage({ register = false }) {
                     placeholder="Enter your password again"
                     required
                     minLength={8}
+                    maxLength={128}
                     autoComplete="new-password"
                   />
                   <button
