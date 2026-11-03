@@ -409,13 +409,19 @@ async function seedFirstLesson(offeringId, students) {
     .sort("sequence")
     .select("_id published")
     .lean();
-  if (!first?.published || !(await Quiz.exists({ lesson: first._id, published: true }))) return;
+  if (
+    !first?.published ||
+    !(await Quiz.exists({ lesson: first._id, published: true }))
+  )
+    return;
   await Promise.all(
     students.map(async (student) => {
       try {
         await AccessGrant.updateOne(
           { student, offering: offeringId, lesson: first._id },
-          { $setOnInsert: { student, offering: offeringId, lesson: first._id } },
+          {
+            $setOnInsert: { student, offering: offeringId, lesson: first._id },
+          },
           { upsert: true },
         );
       } catch (error) {
@@ -428,13 +434,18 @@ async function seedFirstLesson(offeringId, students) {
 async function firstPublishedLessonWithQuiz(offeringId, afterSequence) {
   const query = {
     offering: offeringId,
-    ...(afterSequence === undefined ? {} : { sequence: { $gt: afterSequence } }),
+    ...(afterSequence === undefined
+      ? {}
+      : { sequence: { $gt: afterSequence } }),
   };
   const lesson = await Lesson.findOne(query)
     .sort("sequence")
     .select("_id sequence published")
     .lean();
-  if (!lesson?.published || !(await Quiz.exists({ lesson: lesson._id, published: true })))
+  if (
+    !lesson?.published ||
+    !(await Quiz.exists({ lesson: lesson._id, published: true }))
+  )
     return null;
   return lesson;
 }
@@ -533,59 +544,74 @@ router.get(
     const weekStart = new Date();
     weekStart.setUTCHours(0, 0, 0, 0);
     weekStart.setUTCDate(weekStart.getUTCDate() - 6);
-    const [lessons, passingAttempts, publishedQuizzes, progressResets, attempts, grades, weeklyAttempts] =
-      await Promise.all([
-        Lesson.find({ offering: { $in: offeringIds }, published: true })
-          .select("_id offering sequence title")
-          .sort("sequence")
-          .lean(),
-        Attempt.find({
-          student: req.user.id,
-          offering: { $in: offeringIds },
-          passed: true,
+    const [
+      lessons,
+      passingAttempts,
+      publishedQuizzes,
+      progressResets,
+      attempts,
+      grades,
+      weeklyAttempts,
+    ] = await Promise.all([
+      Lesson.find({ offering: { $in: offeringIds }, published: true })
+        .select("_id offering sequence title")
+        .sort("sequence")
+        .lean(),
+      Attempt.find({
+        student: req.user.id,
+        offering: { $in: offeringIds },
+        passed: true,
+      })
+        .select("quiz submittedAt")
+        .lean(),
+      Quiz.find({
+        published: true,
+        lesson: {
+          $in: await Lesson.find({
+            offering: { $in: offeringIds },
+            published: true,
+          }).distinct("_id"),
+        },
+      })
+        .select("_id lesson")
+        .lean(),
+      Progress.find({
+        student: req.user.id,
+        offering: { $in: offeringIds },
+        resetAt: { $ne: null },
+      })
+        .select("lesson resetAt")
+        .lean(),
+      Attempt.find({ student: req.user.id, offering: { $in: offeringIds } })
+        .sort("-submittedAt")
+        .limit(5)
+        .populate("quiz", "lesson")
+        .populate({
+          path: "quiz",
+          populate: { path: "lesson", select: "title" },
         })
-          .select("quiz submittedAt")
-          .lean(),
-        Quiz.find({
-          published: true,
-          lesson: {
-            $in: await Lesson.find({ offering: { $in: offeringIds }, published: true }).distinct("_id"),
-          },
-        })
-          .select("_id lesson")
-          .lean(),
-        Progress.find({
-          student: req.user.id,
-          offering: { $in: offeringIds },
-          resetAt: { $ne: null },
-        })
-          .select("lesson resetAt")
-          .lean(),
-        Attempt.find({ student: req.user.id, offering: { $in: offeringIds } })
-          .sort("-submittedAt")
-          .limit(5)
-          .populate("quiz", "lesson")
-          .populate({
-            path: "quiz",
-            populate: { path: "lesson", select: "title" },
-          })
-          .lean(),
-        Grade.find({ student: req.user.id, offering: { $in: offeringIds } })
-          .select("offering category title score maxScore")
-          .lean(),
-        Attempt.find({
-          student: req.user.id,
-          offering: { $in: offeringIds },
-          submittedAt: { $gte: weekStart },
-        })
-          .select("submittedAt")
-          .lean(),
-      ]);
+        .lean(),
+      Grade.find({ student: req.user.id, offering: { $in: offeringIds } })
+        .select("offering category title score maxScore")
+        .lean(),
+      Attempt.find({
+        student: req.user.id,
+        offering: { $in: offeringIds },
+        submittedAt: { $gte: weekStart },
+      })
+        .select("submittedAt")
+        .lean(),
+    ]);
     const resetsByLesson = new Map(
-      progressResets.map((progress) => [String(progress.lesson), progress.resetAt]),
+      progressResets.map((progress) => [
+        String(progress.lesson),
+        progress.resetAt,
+      ]),
     );
     const lessonsWithQuizzes = lessons.filter((lesson) =>
-      publishedQuizzes.some((quiz) => String(quiz.lesson) === String(lesson._id)),
+      publishedQuizzes.some(
+        (quiz) => String(quiz.lesson) === String(lesson._id),
+      ),
     );
     const completed = lessonsWithQuizzes.filter((lesson) => {
       const quiz = publishedQuizzes.find(
@@ -1120,6 +1146,68 @@ router.get(
   }),
 );
 
+router.delete(
+  "/offerings/:offeringId/students/:studentId",
+  allowRoles("faculty"),
+  asyncRoute(async (req, res) => {
+    const params = isValid(
+      z.object({ offeringId: id, studentId: id }),
+      req.params,
+    );
+    if (!params.success) return fail(res, 400, "Choose a valid student.");
+    const offering = await facultyOffering(params.data.offeringId, req.user.id);
+    if (!offering) return fail(res, 404, "Course offering not found.");
+
+    const removalTime = new Date();
+    const result = await Offering.updateOne(
+      { _id: offering.id, students: params.data.studentId },
+      { $pull: { students: params.data.studentId } },
+    );
+    if (!result.modifiedCount)
+      return fail(res, 404, "Student is not enrolled in this course.");
+
+    await Promise.all([
+      AccessGrant.deleteMany({
+        student: params.data.studentId,
+        offering: offering.id,
+      }),
+      QuizSession.deleteMany({
+        student: params.data.studentId,
+        offering: offering.id,
+      }),
+      Progress.updateMany(
+        { student: params.data.studentId, offering: offering.id },
+        {
+          $set: {
+            completedAt: null,
+            resetAt: removalTime,
+            resetBy: req.user.id,
+            resetReason: "Enrollment removed by faculty.",
+          },
+        },
+      ),
+      EnrollmentRequest.updateOne(
+        {
+          student: params.data.studentId,
+          offering: offering.id,
+          status: "approved",
+        },
+        {
+          $set: {
+            status: "rejected",
+            reviewedAt: removalTime,
+            reviewedBy: req.user.id,
+          },
+        },
+      ),
+    ]);
+    return success(res, {
+      removed: true,
+      historyRetained: true,
+    });
+  }),
+);
+
 router.get(
   "/offerings/:offeringId/lessons",
   asyncRoute(async (req, res) => {
@@ -1421,11 +1509,12 @@ router.get(
   }),
 );
 
-router.post(
-  "/lessons/:lessonId/complete",
-  allowRoles("student"),
-  (_req, res) =>
-    fail(res, 410, "Lessons can only be completed by passing their published quiz."),
+router.post("/lessons/:lessonId/complete", allowRoles("student"), (_req, res) =>
+  fail(
+    res,
+    410,
+    "Lessons can only be completed by passing their published quiz.",
+  ),
 );
 
 router.put(
@@ -1503,10 +1592,17 @@ router.get(
     const lesson = await Lesson.findById(quiz.lesson);
     if (!lesson || !(await lessonAccess(lesson, req.user.id)))
       return fail(res, 403, "This lesson is still locked.");
-    const active = await QuizSession.findOne({ student: req.user.id, quiz: quiz.id });
+    const active = await QuizSession.findOne({
+      student: req.user.id,
+      quiz: quiz.id,
+    });
     if (!active) return success(res, { session: null });
-    if (!active.attemptNumber) return success(res, { session: null, starting: true });
-    const expiresAt = quizExpiresAt(active.startedAt, quiz.timeLimitMinutes ?? 10);
+    if (!active.attemptNumber)
+      return success(res, { session: null, starting: true });
+    const expiresAt = quizExpiresAt(
+      active.startedAt,
+      quiz.timeLimitMinutes ?? 10,
+    );
     if (new Date() >= expiresAt) {
       const attempt = await recordExpiredAttempt({
         session: active,
@@ -1515,7 +1611,11 @@ router.get(
         studentId: req.user.id,
         now: new Date(),
       });
-      return success(res, { session: null, expired: true, ...(attempt ? { attempt } : {}) });
+      return success(res, {
+        session: null,
+        expired: true,
+        ...(attempt ? { attempt } : {}),
+      });
     }
     return success(res, {
       session: {

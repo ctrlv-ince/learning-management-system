@@ -2221,6 +2221,28 @@ button:focus-visible {
 .enroll-form .button {
   white-space: nowrap;
 }
+.remove-enrollment-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 6px 10px;
+  border: 1px solid #eadbd6;
+  border-radius: 7px;
+  background: #fbf5f3;
+  color: #80584f;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.remove-enrollment-button:hover:not(:disabled) {
+  background: #f6e9e4;
+}
+.remove-enrollment-button:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
 .roster-empty {
   min-height: 190px;
   display: grid;

@@ -11,6 +11,7 @@ import {
   Printer,
   Sparkles,
   Users,
+  UserMinus,
 } from "lucide-react";
 import { api, send } from "../api.js";
 import { validateRequiredValues } from "../formValidation.js";
@@ -35,6 +36,7 @@ export function StudentsPage() {
   const [inviteCode, setInviteCode] = useState(null);
   const [inviteBusy, setInviteBusy] = useState(false);
   const [email, setEmail] = useState("");
+  const [removingStudent, setRemovingStudent] = useState("");
   async function loadOfferingRoster(offeringId = selected) {
     if (!offeringId) return;
     const [roster, pending, invite] = await Promise.all([
@@ -104,6 +106,27 @@ export function StudentsPage() {
       await loadOfferingRoster();
     } catch (err) {
       notify(err.message);
+    }
+  }
+  async function removeStudent(student) {
+    const studentName = fullName(student);
+    if (
+      !window.confirm(
+        `Remove ${studentName} from this course? They will lose access. Quiz attempts and grade records will be retained.`,
+      )
+    )
+      return;
+    setRemovingStudent(String(student._id));
+    try {
+      await api(`/offerings/${selected}/students/${student._id}`, {
+        method: "DELETE",
+      });
+      notify(`${studentName} was removed from this course.`);
+      await loadOfferingRoster();
+    } catch (err) {
+      notify(err.message);
+    } finally {
+      setRemovingStudent("");
     }
   }
   if (loading) return <Loading />;
@@ -272,6 +295,7 @@ export function StudentsPage() {
                       <th>STUDENT ID</th>
                       <th>PROGRAM</th>
                       <th>YEAR LEVEL</th>
+                      <th className="no-print">ACTIONS</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -290,6 +314,20 @@ export function StudentsPage() {
                         <td>{student.profile?.program?.code || "—"}</td>
                         <td>
                           {student.profile?.currentYearLevel || "Not set"}
+                        </td>
+                        <td className="no-print">
+                          <button
+                            type="button"
+                            className="remove-enrollment-button"
+                            disabled={removingStudent === String(student._id)}
+                            onClick={() => removeStudent(student)}
+                            aria-label={`Remove ${fullName(student)} from this course`}
+                          >
+                            <UserMinus size={15} />
+                            {removingStudent === String(student._id)
+                              ? "Removing…"
+                              : "Remove"}
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -838,7 +876,8 @@ export function GradesPage() {
             )}
             <h2 className="table-section-title">Course grades</h2>
             <p className="muted gradebook-calculation-note">
-              Course grades are calculated from quiz scores only. Other coursework is recorded separately and does not affect this grade.
+              Course grades are calculated from quiz scores only. Other
+              coursework is recorded separately and does not affect this grade.
             </p>
             {gradeData.courseGrades.length ? (
               <div className="table-wrap">
@@ -955,7 +994,10 @@ export function GradeEntry({ offeringId, onSaved }) {
     <form className="grade-entry" onSubmit={save}>
       <div>
         <span className="eyebrow">ADD OR EDIT A COURSE GRADE</span>
-        <p>Course grade calculation uses quiz scores only; this entry is kept as a separate record.</p>
+        <p>
+          Course grade calculation uses quiz scores only; this entry is kept as
+          a separate record.
+        </p>
       </div>
       <div className="grade-entry-fields">
         <select name="student" required defaultValue="">
