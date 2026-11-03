@@ -7,7 +7,7 @@
   font-optical-sizing: auto;
   font-weight: 400;
   --ink: #252a27;
-  --muted: #848a82;
+  --muted: #697268;
   --line: #e6e8e1;
   --paper: #fff;
   --green: #547562;
@@ -56,7 +56,7 @@ button {
   justify-items: center;
   gap: 15px;
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14px;
 }
 .brand {
   display: flex;
@@ -86,17 +86,18 @@ button {
   color: #77957f;
 }
 .eyebrow {
-  font-size: 9px;
-  letter-spacing: 1.55px;
+  font-size: 12px;
+  letter-spacing: 1.2px;
   font-weight: 700;
-  color: #858b81;
+  color: #697268;
+  line-height: 1.4;
 }
 .eyebrow.light {
   color: #c7d2c9;
 }
 .muted {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.65;
 }
 .auth-shell {
@@ -178,7 +179,7 @@ button {
   align-items: center;
   gap: 12px;
   margin-top: 47px;
-  font-size: 9px;
+  font-size: 12px;
   letter-spacing: 1.7px;
   color: #d1dacf;
 }
@@ -192,7 +193,7 @@ button {
   z-index: 1;
   display: flex;
   justify-content: space-between;
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 1.3px;
   color: #c7d2c9;
 }
@@ -212,7 +213,7 @@ button {
   align-items: center;
   gap: 7px;
   text-align: center;
-  font: 600 11px/1.4 var(--serif);
+  font: 600 13px/1.4 var(--serif);
   transform: rotate(7deg);
   box-shadow: 0 12px 40px #1f30247a;
 }
@@ -228,7 +229,7 @@ button {
   display: flex;
   justify-content: space-between;
   color: #999e96;
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 1.3px;
   font-weight: 700;
 }
@@ -254,7 +255,7 @@ button {
 .roster-toolbar label {
   display: grid;
   gap: 7px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 600;
   color: #4e554f;
 }
@@ -271,7 +272,7 @@ button {
   background: #fdfdfa;
   padding: 11px 12px;
   color: var(--ink);
-  font-size: 12px;
+  font-size: 13px;
   outline: none;
   transition:
     border-color 0.18s,
@@ -323,7 +324,7 @@ button {
 }
 .optional {
   margin-left: 5px;
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 1px;
   color: #a1a59e;
 }
@@ -335,7 +336,7 @@ button {
   border: 0;
   border-radius: 8px;
   padding: 11px 15px;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   cursor: pointer;
   transition:
@@ -380,7 +381,7 @@ button:focus-visible {
 .auth-switch {
   margin-top: 23px;
   text-align: center;
-  font-size: 11px;
+  font-size: 13px;
   color: #858a83;
 }
 .auth-switch a {
@@ -410,7 +411,7 @@ button:focus-visible {
   align-items: center;
   justify-content: center;
   gap: 7px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -432,7 +433,7 @@ button:focus-visible {
   display: flex;
   align-items: center;
   gap: 9px;
-  font-size: 12px;
+  font-size: 13px;
   animation: toastIn 0.2s ease-out;
 }
 @keyframes toastIn {
@@ -485,7 +486,7 @@ button:focus-visible {
   border-radius: 8px;
   background: #eee8dc;
   color: #766749;
-  font: 700 13px var(--serif);
+  font: 700 14px var(--serif);
 }
 .org-switch > span {
   flex: 1;
@@ -494,12 +495,12 @@ button:focus-visible {
 }
 .org-switch strong,
 .user-menu strong {
-  font-size: 10px;
+  font-size: 12px;
 }
 .org-switch small,
 .user-menu small {
   color: #969b94;
-  font-size: 9px;
+  font-size: 12px;
 }
 .org-switch > svg {
   color: #9a9f97;
@@ -516,7 +517,7 @@ button:focus-visible {
 .nav-label {
   padding: 0 12px 8px;
   color: #a1a59e;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 1.3px;
 }
@@ -528,7 +529,7 @@ button:focus-visible {
   padding: 0 12px;
   border-radius: 7px;
   color: #747b73;
-  font-size: 11px;
+  font-size: 13px;
   transition:
     background 0.18s,
     color 0.18s;
@@ -557,7 +558,7 @@ button:focus-visible {
   padding: 9px 8px;
   border-radius: 7px;
   color: #5e7563;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 600;
 }
 .sidebar-public-home:hover {
@@ -588,10 +589,10 @@ button:focus-visible {
   flex: 1;
 }
 .term-card b {
-  font-size: 9px;
+  font-size: 12px;
 }
 .term-card small {
-  font-size: 8px;
+  font-size: 12px;
   color: #999a8a;
 }
 .term-card > svg {
@@ -619,7 +620,7 @@ button:focus-visible {
   display: grid;
   place-items: center;
   font-weight: 700;
-  font-size: 10px;
+  font-size: 12px;
 }
 .user-menu > span:nth-child(2) {
   display: grid;
@@ -674,7 +675,7 @@ button:focus-visible {
 .welcome-decoration i {
   font-style: normal;
   color: #9da39a;
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 1.1px;
 }
 .stats-grid {
@@ -685,14 +686,14 @@ button:focus-visible {
 }
 .stat-card {
   position: relative;
-  min-height: 130px;
+  min-height: 146px;
   border: 1px solid #e8eae3;
   border-radius: 10px;
   background: #fff;
-  padding: 16px 17px;
+  padding: 18px;
   display: grid;
   grid-template-columns: 33px 1fr;
-  grid-template-rows: 35px 1fr 18px;
+  grid-template-rows: auto 1fr auto;
   column-gap: 9px;
 }
 .stat-icon {
@@ -716,7 +717,7 @@ button:focus-visible {
 }
 .stat-label {
   align-self: center;
-  font-size: 10px;
+  font-size: 12px;
   color: #858b83;
 }
 .stat-value {
@@ -728,7 +729,7 @@ button:focus-visible {
 .stat-note {
   grid-column: 1/3;
   color: #a0a59e;
-  font-size: 9px;
+  font-size: 12px;
 }
 .dashboard-grid {
   display: grid;
@@ -763,7 +764,7 @@ button:focus-visible {
   align-items: center;
   gap: 6px;
   color: #53745e;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
 }
 .text-link:hover {
@@ -787,7 +788,7 @@ button:focus-visible {
   display: grid;
   place-items: center;
   flex: none;
-  font: 700 10px var(--serif);
+  font: 700 12px var(--serif);
 }
 .course-mint {
   color: #4c7458;
@@ -816,7 +817,7 @@ button:focus-visible {
   gap: 3px;
 }
 .course-code {
-  font-size: 8px;
+  font-size: 12px;
   color: #92988f;
   letter-spacing: 0.35px;
 }
@@ -827,11 +828,11 @@ button:focus-visible {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
 }
 .course-name small {
-  font-size: 9px;
+  font-size: 12px;
   color: #9b9f98;
 }
 .course-row-meta {
@@ -839,7 +840,7 @@ button:focus-visible {
   align-items: center;
   gap: 15px;
   color: #989e96;
-  font-size: 9px;
+  font-size: 12px;
 }
 .course-row-meta small {
   color: #b0b4ae;
@@ -877,14 +878,14 @@ button:focus-visible {
   gap: 4px;
 }
 .activity-item strong {
-  font-size: 10px;
+  font-size: 12px;
 }
 .activity-item small {
-  font-size: 9px;
+  font-size: 12px;
   color: #979d95;
 }
 .score-chip {
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
   padding: 4px 7px;
   border-radius: 5px;
@@ -912,7 +913,7 @@ button:focus-visible {
   align-items: center;
   gap: 6px;
   color: #8d938b;
-  font-size: 9px;
+  font-size: 12px;
 }
 .outcome-strip b {
   margin-left: auto;
@@ -943,10 +944,10 @@ button:focus-visible {
 }
 .quiet-empty strong {
   margin-top: 9px;
-  font: 600 11px var(--serif);
+  font: 600 13px var(--serif);
 }
 .quiet-empty p {
-  font-size: 9px;
+  font-size: 12px;
   color: #a0a59e;
 }
 .quiet-icon {
@@ -969,21 +970,21 @@ button:focus-visible {
   margin-bottom: 12px;
 }
 .empty-panel > strong {
-  font: 600 13px var(--serif);
+  font: 600 14px var(--serif);
 }
 .empty-panel > p {
   max-width: 290px;
   margin: 7px 0 13px;
   color: #949a92;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.6;
 }
 .student-banner {
   position: relative;
   overflow: hidden;
-  min-height: 148px;
+  min-height: 166px;
   margin: 2px 0 17px;
-  padding: 23px 26px;
+  padding: 25px 28px;
   display: grid;
   grid-template-columns: 1.1fr 1px 1fr;
   align-items: center;
@@ -1017,7 +1018,7 @@ button:focus-visible {
   height: 45px;
   background: #e0e8dc;
   color: #49634e;
-  font-size: 12px;
+  font-size: 13px;
 }
 .identity .eyebrow {
   color: #c0d0c3;
@@ -1030,7 +1031,7 @@ button:focus-visible {
 .identity p {
   margin: 0;
   color: #c4d0c5;
-  font-size: 10px;
+  font-size: 12px;
 }
 .identity p span {
   margin: 0 4px;
@@ -1043,7 +1044,7 @@ button:focus-visible {
   gap: 5px;
   margin-top: 9px;
   color: #d4dfd4;
-  font-size: 9px;
+  font-size: 12px;
 }
 .student-year-level-form label {
   grid-column: 1 / -1;
@@ -1079,7 +1080,7 @@ button:focus-visible {
   display: flex;
   justify-content: space-between;
   margin-bottom: 12px;
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 1.1px;
   color: #d0dbd1;
 }
@@ -1102,7 +1103,7 @@ button:focus-visible {
 .banner-progress > small {
   display: block;
   margin-top: 9px;
-  font-size: 9px;
+  font-size: 12px;
   color: #c2d0c5;
 }
 .banner-orbit {
@@ -1124,7 +1125,7 @@ button:focus-visible {
   align-items: center;
   gap: 4px;
   color: #969c93;
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 0.6px;
 }
 .rhythm-caption {
@@ -1137,7 +1138,7 @@ button:focus-visible {
   font: 600 25px var(--serif);
 }
 .rhythm-caption > span {
-  font-size: 9px;
+  font-size: 12px;
   color: #92988f;
 }
 .trend-up {
@@ -1156,7 +1157,7 @@ button:focus-visible {
   align-items: center;
   gap: 7px;
   color: #969c93;
-  font-size: 9px;
+  font-size: 12px;
 }
 .chart-legend-dot {
   width: 7px;
@@ -1213,17 +1214,17 @@ button:focus-visible {
   gap: 4px;
 }
 .result-pill b {
-  font-size: 9px;
+  font-size: 12px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .result-pill small {
-  font-size: 8px;
+  font-size: 12px;
   color: #9a9f98;
 }
 .result-pill > strong {
-  font-size: 10px;
+  font-size: 12px;
   color: #587762;
 }
 .page-header {
@@ -1278,7 +1279,7 @@ button:focus-visible {
 }
 .card-art > span {
   z-index: 1;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 1px;
   font-weight: 700;
 }
@@ -1303,13 +1304,13 @@ button:focus-visible {
   background: #dce8ed;
 }
 .course-card-body {
-  padding: 15px 17px 12px;
+  padding: 17px 18px 14px;
 }
 .course-card-kicker {
   display: flex;
   gap: 8px;
   color: #969c93;
-  font-size: 8px;
+  font-size: 12px;
 }
 .course-card-kicker span + span:before {
   content: "·";
@@ -1324,7 +1325,7 @@ button:focus-visible {
 .course-card-body > p {
   margin: 0;
   color: #92988f;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.6;
   min-height: 32px;
 }
@@ -1335,7 +1336,7 @@ button:focus-visible {
   display: flex;
   justify-content: space-between;
   color: #8a9289;
-  font-size: 9px;
+  font-size: 12px;
 }
 .course-card-footer span {
   display: flex;
@@ -1350,7 +1351,7 @@ button:focus-visible {
   display: inline-block;
   margin: 0 0 24px;
   color: #718278;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
 }
 .back-link:hover {
@@ -1380,7 +1381,7 @@ button:focus-visible {
   border-radius: 7px;
   background: #eaf0eb;
   color: #5b7863;
-  font-size: 9px;
+  font-size: 12px;
 }
 .lesson-layout {
   display: grid;
@@ -1393,15 +1394,15 @@ button:focus-visible {
 }
 .lesson-total {
   color: #a0a59e;
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 1px;
 }
 .lesson-items {
   display: grid;
 }
 .lesson-row {
-  min-height: 74px;
-  padding: 12px 2px;
+  min-height: 84px;
+  padding: 14px 3px;
   border-top: 1px solid #edf0eb;
   display: flex;
   align-items: center;
@@ -1416,7 +1417,7 @@ button:focus-visible {
   display: grid;
   place-items: center;
   color: #809085;
-  font: 600 9px var(--serif);
+  font: 600 12px var(--serif);
 }
 .lesson-step.step-complete {
   border: 0;
@@ -1439,7 +1440,7 @@ button:focus-visible {
 }
 .lesson-status {
   color: #8c998e;
-  font-size: 7px;
+  font-size: 12px;
   letter-spacing: 0.95px;
   font-weight: 700;
 }
@@ -1447,21 +1448,21 @@ button:focus-visible {
   color: #a7aaa3;
 }
 .lesson-copy strong {
-  font-size: 11px;
+  font-size: 13px;
 }
 .lesson-copy small {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   color: #989e96;
-  font-size: 9px;
+  font-size: 12px;
 }
 .quiz-indicator {
   display: flex;
   align-items: center;
   gap: 4px;
   color: #a08761;
-  font-size: 8px;
+  font-size: 12px;
 }
 .lesson-open {
   width: 26px;
@@ -1487,7 +1488,7 @@ button:focus-visible {
 .lesson-create > p {
   margin: -5px 0 3px;
   color: #949a92;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.6;
 }
 .lesson-create > .lesson-upload-hint {
@@ -1525,7 +1526,7 @@ button:focus-visible {
   align-items: center;
   gap: 8px;
   color: #879187;
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 1.05px;
 }
 .lesson-content-icon {
@@ -1541,7 +1542,7 @@ button:focus-visible {
   padding: 11px 0;
   color: #4d554d;
   font:
-    400 13px/1.9 "DM Sans",
+    400 14px/1.9 "DM Sans",
     sans-serif;
 }
 .lesson-prose p {
@@ -1571,10 +1572,10 @@ button:focus-visible {
   flex: 1;
 }
 .material-link b {
-  font-size: 10px;
+  font-size: 12px;
 }
 .material-link small {
-  font-size: 8px;
+  font-size: 12px;
   color: #9ba199;
 }
 .material-link > svg {
@@ -1608,13 +1609,13 @@ button:focus-visible {
 .presentation-viewer-heading h3 {
   margin: 4px 0 0;
   color: #3b493e;
-  font: 600 12px var(--serif);
+  font: 600 13px var(--serif);
   overflow-wrap: anywhere;
 }
 .presentation-download {
   flex: none;
   color: #58745f;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 650;
 }
 .presentation-expand {
@@ -1628,7 +1629,9 @@ button:focus-visible {
   border-radius: 7px;
   background: #f8faf7;
   color: #48634e;
-  font: 600 10px "DM Sans", sans-serif;
+  font:
+    600 12px "DM Sans",
+    sans-serif;
   cursor: pointer;
 }
 .presentation-expand:hover {
@@ -1682,12 +1685,12 @@ button:focus-visible {
 .lesson-publication h3 {
   margin: 0;
   color: #3b493e;
-  font: 600 13px var(--serif);
+  font: 600 14px var(--serif);
 }
 .lesson-publication p {
   margin: 0;
   color: #89928a;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.55;
 }
 .lesson-load-error {
@@ -1705,13 +1708,13 @@ button:focus-visible {
 .lesson-load-error p {
   margin: 0;
   color: #7c867d;
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.6;
 }
 .quiz-timer-note {
   margin: 10px 0;
   color: #7a887d;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.55;
 }
 .quiz-import-settings {
@@ -1725,7 +1728,7 @@ button:focus-visible {
 .quiz-import-settings > p {
   margin: 0;
   color: #7a887d;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.5;
 }
 .quiz-import-settings .field-row {
@@ -1733,7 +1736,7 @@ button:focus-visible {
 }
 .gradebook-calculation-note {
   margin: -6px 0 12px;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.5;
 }
 .attempt-exhausted {
@@ -1744,12 +1747,12 @@ button:focus-visible {
   border-radius: 8px;
   background: #fffaf5;
   color: #795940;
-  font-size: 10px;
+  font-size: 12px;
 }
 .attempt-exhausted p {
   margin: 0;
   color: #907a69;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.55;
 }
 .quiz-panel {
@@ -1779,7 +1782,7 @@ button:focus-visible {
   align-items: center;
   gap: 8px;
   color: #939a91;
-  font-size: 8px;
+  font-size: 12px;
 }
 .quiz-facts b {
   color: #65796a;
@@ -1805,18 +1808,18 @@ button:focus-visible {
   grid-template-columns: 24px 1fr auto;
   align-items: start;
   gap: 5px;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1.55;
 }
 .quiz-form legend small {
   color: #a1a69f;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 400;
 }
 .question-number {
   color: #819485;
-  font: 700 9px var(--serif);
+  font: 700 12px var(--serif);
 }
 .choice-option {
   position: relative;
@@ -1828,7 +1831,7 @@ button:focus-visible {
   border: 1px solid #e9ece6;
   border-radius: 7px;
   color: #6d746d;
-  font-size: 9px;
+  font-size: 12px;
   cursor: pointer;
 }
 .choice-option.chosen {
@@ -1857,7 +1860,7 @@ button:focus-visible {
   padding: 10px;
   border: 1px solid #e7eae3;
   border-radius: 7px;
-  font-size: 10px;
+  font-size: 12px;
   outline: none;
 }
 .short-answer:focus {
@@ -1883,7 +1886,7 @@ button:focus-visible {
   color: #9e725f;
 }
 .quiz-result > span {
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
 }
 .quiz-result > b {
@@ -1891,27 +1894,27 @@ button:focus-visible {
 }
 .quiz-result > small {
   grid-column: 1/3;
-  font-size: 8px;
+  font-size: 12px;
   opacity: 0.8;
 }
 .attempt-note {
   margin: 11px 0;
   color: #91988f;
-  font-size: 9px;
+  font-size: 12px;
 }
 .quiz-editor {
   margin-top: 14px;
   gap: 11px;
 }
 .quiz-editor.form-stack label {
-  font-size: 9px;
+  font-size: 12px;
 }
 .quiz-editor .form-stack input,
 .quiz-editor input,
 .quiz-editor select,
 .quiz-editor textarea {
   padding: 9px;
-  font-size: 10px;
+  font-size: 12px;
 }
 .quiz-import {
   margin-top: 14px;
@@ -1931,7 +1934,7 @@ button:focus-visible {
 .quiz-presentation-generator small {
   margin: 0;
   color: #788078;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.55;
 }
 .quiz-presentation-generator select {
@@ -1943,7 +1946,7 @@ button:focus-visible {
   border: 1px solid var(--line, #e5e8df);
   border-radius: 8px;
   color: var(--ink, #26362b);
-  font-size: 10px;
+  font-size: 12px;
 }
 .quiz-format-help summary,
 .manual-quiz-editor summary {
@@ -1957,7 +1960,7 @@ button:focus-visible {
   background: #f5f6f1;
   color: #526458;
   font:
-    10px/1.6 ui-monospace,
+    12px/1.6 ui-monospace,
     SFMono-Regular,
     Consolas,
     monospace;
@@ -1975,7 +1978,7 @@ button:focus-visible {
   margin: 0;
 }
 .quiz-import-review > p {
-  font-size: 10px;
+  font-size: 12px;
 }
 .quiz-import-review .editor-question {
   margin: 0;
@@ -1987,7 +1990,7 @@ button:focus-visible {
   display: flex !important;
   align-items: center;
   gap: 7px !important;
-  font-size: 9px !important;
+  font-size: 12px !important;
 }
 .publish-check input {
   width: 13px;
@@ -2006,7 +2009,7 @@ button:focus-visible {
 .upload-help {
   margin: 0;
   color: #89928a;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.6;
 }
 .upload-progress {
@@ -2022,7 +2025,7 @@ button:focus-visible {
   justify-content: space-between;
   gap: 8px;
   color: #64766a;
-  font-size: 9px;
+  font-size: 12px;
 }
 .upload-progress progress {
   width: 100%;
@@ -2051,7 +2054,7 @@ button:focus-visible {
   border-radius: 7px;
   background: #fff8f7;
   color: #9b413a;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.5;
 }
 .file-picker {
@@ -2069,11 +2072,11 @@ button:focus-visible {
 .file-picker > span {
   display: grid;
   gap: 4px;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 600;
 }
 .file-picker small {
-  font-size: 8px;
+  font-size: 12px;
   color: #9ba198;
   font-weight: 400;
 }
@@ -2083,7 +2086,7 @@ button:focus-visible {
   min-width: 0;
   gap: 5px;
   color: #52685a;
-  font-size: 9px;
+  font-size: 12px;
 }
 .selected-upload-file > span {
   display: grid;
@@ -2096,7 +2099,7 @@ button:focus-visible {
 }
 .selected-upload-file small {
   color: #829087;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 400;
 }
 .file-picker input {
@@ -2118,7 +2121,7 @@ button:focus-visible {
 .ai-draft-fields > p {
   margin: 0;
   color: #89928a;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.55;
 }
 .ai-draft-fields {
@@ -2130,7 +2133,7 @@ button:focus-visible {
   display: grid;
   gap: 5px;
   color: #667368;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 600;
 }
 .ai-draft-fields input,
@@ -2141,7 +2144,7 @@ button:focus-visible {
   border-radius: 7px;
   color: #37433b;
   background: #fff;
-  font: 400 10px/1.5 var(--sans);
+  font: 400 12px/1.5 var(--sans);
   resize: vertical;
 }
 .unlock-note {
@@ -2155,7 +2158,7 @@ button:focus-visible {
 .unlock-note p {
   margin: 0;
   color: #89928a;
-  font: 500 10px/1.65 var(--serif);
+  font: 500 12px/1.65 var(--serif);
 }
 .acknowledgement {
   margin-top: 25px;
@@ -2179,15 +2182,15 @@ button:focus-visible {
   flex: 1;
 }
 .acknowledgement strong {
-  font-size: 10px;
+  font-size: 12px;
 }
 .acknowledgement p {
   margin: 4px 0 0;
   color: #92998f;
-  font-size: 8px;
+  font-size: 12px;
 }
 .acknowledgement .button {
-  font-size: 9px;
+  font-size: 12px;
   padding: 8px;
 }
 .roster-panel,
@@ -2225,7 +2228,7 @@ button:focus-visible {
   justify-items: center;
   gap: 11px;
   color: #9aa197;
-  font-size: 10px;
+  font-size: 12px;
 }
 .roster-empty svg {
   color: #8aa08e;
@@ -2242,7 +2245,7 @@ th {
   padding: 12px 10px;
   text-align: left;
   color: #9ba199;
-  font-size: 8px;
+  font-size: 12px;
   letter-spacing: 1px;
   font-weight: 700;
 }
@@ -2250,11 +2253,11 @@ td {
   padding: 12px 10px;
   border-top: 1px solid #edf0eb;
   color: #626b62;
-  font-size: 10px;
+  font-size: 12px;
 }
 td small {
   color: #9da39b;
-  font-size: 9px;
+  font-size: 12px;
 }
 .table-person {
   display: flex;
@@ -2266,17 +2269,17 @@ td small {
   gap: 4px;
 }
 .table-person b {
-  font-size: 10px;
+  font-size: 12px;
   color: #4a514b;
 }
 .table-person small {
-  font-size: 9px;
+  font-size: 12px;
   color: #979d95;
 }
 .grade-status {
   padding: 5px 7px;
   border-radius: 5px;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 600;
 }
 .grade-status.good {
@@ -2289,7 +2292,7 @@ td small {
 }
 .table-section-title {
   margin: 20px 0 8px;
-  font: 600 13px var(--serif);
+  font: 600 14px var(--serif);
 }
 .gradebook-actions {
   display: flex;
@@ -2303,7 +2306,7 @@ td small {
   display: grid;
   gap: 5px;
   color: #737b73;
-  font-size: 10px;
+  font-size: 12px;
 }
 .gradebook-actions select {
   min-height: 38px;
@@ -2328,7 +2331,7 @@ td small {
 .lesson-summary h2 {
   margin: 0 0 8px;
   color: #526b55;
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
@@ -2379,7 +2382,7 @@ td small {
   display: block;
   margin: 4px 0 6px;
   color: #7b8578;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 700;
 }
 .catalog-program {
@@ -2392,12 +2395,12 @@ td small {
 }
 .catalog-program b {
   color: #54735c;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.06em;
 }
 .catalog-program span {
   color: #6f786f;
-  font-size: 11px;
+  font-size: 13px;
   line-height: 1.45;
 }
 .setup-footnote {
@@ -2406,7 +2409,7 @@ td small {
   gap: 9px;
   margin: 17px 2px;
   color: #858e84;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.65;
 }
 .setup-footnote svg {
@@ -2431,14 +2434,14 @@ td small {
   gap: 10px;
   padding: 10px 0;
   border-top: 1px solid #edf0eb;
-  font-size: 10px;
+  font-size: 12px;
 }
 .simple-course-row b {
   flex: 1;
 }
 .simple-course-row > span:nth-child(3) {
   color: #8d958c;
-  font-size: 9px;
+  font-size: 12px;
 }
 .simple-course-row > svg {
   color: #799081;
@@ -2453,7 +2456,7 @@ td small {
   justify-content: center;
   gap: 9px;
   color: #899188;
-  font-size: 11px;
+  font-size: 13px;
 }
 .spinner {
   width: 16px;
@@ -2529,7 +2532,7 @@ td small {
     letter-spacing: -2.5px;
   }
   .art-copy > p {
-    font-size: 12px;
+    font-size: 13px;
   }
   .art-quote,
   .art-stamp,
@@ -2643,8 +2646,8 @@ td small {
     gap: 7px;
   }
   .stat-card {
-    min-height: 116px;
-    padding: 12px 10px;
+    min-height: 132px;
+    padding: 14px 12px;
     grid-template-columns: 28px 1fr;
     column-gap: 6px;
   }
@@ -2656,13 +2659,13 @@ td small {
     width: 15px;
   }
   .stat-label {
-    font-size: 8px;
+    font-size: 12px;
   }
   .stat-value {
     font-size: 25px;
   }
   .stat-note {
-    font-size: 8px;
+    font-size: 12px;
   }
   .courses-panel,
   .activity-panel,
@@ -2704,7 +2707,7 @@ td small {
     font-size: 15px;
   }
   .identity p {
-    font-size: 8px;
+    font-size: 12px;
   }
   .results-row {
     grid-template-columns: 1fr;
@@ -2718,7 +2721,7 @@ td small {
   }
   .page-header .button {
     padding: 9px;
-    font-size: 9px;
+    font-size: 12px;
   }
   .all-courses-grid {
     grid-template-columns: 1fr;
@@ -2732,7 +2735,7 @@ td small {
     font-size: 27px;
   }
   .year-tag {
-    font-size: 8px;
+    font-size: 12px;
     white-space: nowrap;
   }
   .lesson-list {
@@ -2742,7 +2745,7 @@ td small {
     gap: 8px;
   }
   .lesson-copy strong {
-    font-size: 10px;
+    font-size: 12px;
   }
   .quiz-indicator {
     display: none;
@@ -2783,7 +2786,7 @@ td small {
   }
   .enroll-form .button {
     padding: 9px;
-    font-size: 9px;
+    font-size: 12px;
   }
   .auth-panel {
     padding-left: 20px;
@@ -2793,14 +2796,14 @@ td small {
     font-size: 26px;
   }
   .auth-footer {
-    font-size: 7px;
+    font-size: 12px;
     letter-spacing: 0.8px;
   }
   .field-row {
     gap: 8px;
   }
   .role-switch button {
-    font-size: 9px;
+    font-size: 12px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
@@ -2842,7 +2845,7 @@ td small {
   border-radius: 5px;
   background: #eff3ef;
   color: #58745f;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 }
@@ -2859,7 +2862,7 @@ td small {
 .grade-entry > div:first-child p {
   margin: 5px 0 12px;
   color: #989e96;
-  font-size: 9px;
+  font-size: 12px;
 }
 .grade-entry-fields {
   display: grid;
@@ -2874,11 +2877,11 @@ td small {
   background: #fff;
   padding: 9px;
   color: #555e56;
-  font-size: 9px;
+  font-size: 12px;
   outline: none;
 }
 .grade-entry-fields .button {
-  font-size: 9px;
+  font-size: 12px;
   padding: 8px;
 }
 
@@ -2917,7 +2920,7 @@ td small {
   .quiz-score-summary-table td {
     max-width: none;
     padding: 6px;
-    font-size: 8px;
+    font-size: 12px;
   }
   .table-wrap {
     overflow: visible !important;
@@ -2942,13 +2945,13 @@ td small {
 .privacy-consent legend {
   padding: 0 4px;
   color: #49644f;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
 }
 .privacy-consent p {
   margin: 0 0 11px;
   color: #6b746c;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.6;
 }
 .form-stack .privacy-consent label {
@@ -2956,7 +2959,7 @@ td small {
   align-items: flex-start;
   gap: 9px;
   color: #3f4941;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.5;
   cursor: pointer;
 }
@@ -3001,7 +3004,7 @@ td small {
 .landing-nav nav {
   gap: 28px;
   color: #687168;
-  font-size: 11px;
+  font-size: 13px;
 }
 .landing-nav nav > a:not(.button):hover,
 .landing-footer > a:last-child:hover {
@@ -3060,7 +3063,7 @@ td small {
 }
 .landing-text-link {
   color: #58745f;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
 }
 .landing-caption {
@@ -3069,7 +3072,7 @@ td small {
   gap: 9px;
   margin-top: 57px;
   color: #818980;
-  font-size: 10px;
+  font-size: 12px;
 }
 .landing-caption-mark {
   width: 23px;
@@ -3111,7 +3114,7 @@ td small {
 .preview-lesson small,
 .preview-state {
   color: #909990;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.9px;
 }
@@ -3120,7 +3123,7 @@ td small {
   border-radius: 99px;
   background: #edf4ed;
   color: #64816b;
-  font-size: 7px;
+  font-size: 12px;
   letter-spacing: 0.7px;
 }
 .learning-preview h2 {
@@ -3131,12 +3134,12 @@ td small {
 .learning-preview > p {
   margin: 0;
   color: #8c948b;
-  font-size: 10px;
+  font-size: 12px;
 }
 .preview-progress {
   margin-top: 25px;
   color: #778077;
-  font-size: 9px;
+  font-size: 12px;
 }
 .preview-progress b {
   color: #3f5d47;
@@ -3170,7 +3173,7 @@ td small {
   border-radius: 50%;
   background: #f0f3ee;
   color: #708275;
-  font-size: 10px;
+  font-size: 12px;
 }
 .preview-lesson.done > span:first-child {
   background: #e9f1e9;
@@ -3187,10 +3190,10 @@ td small {
 }
 .preview-lesson > div b {
   color: #39433b;
-  font-size: 11px;
+  font-size: 13px;
 }
 .preview-state {
-  font-size: 7px;
+  font-size: 12px;
   letter-spacing: 0.3px;
 }
 .preview-lesson.current .preview-state {
@@ -3220,11 +3223,11 @@ td small {
 }
 .landing-art-note b {
   color: #455248;
-  font-size: 10px;
+  font-size: 12px;
 }
 .landing-art-note small {
   color: #8a928a;
-  font-size: 8px;
+  font-size: 12px;
 }
 .landing-highlights {
   padding: 42px 0 78px;
@@ -3276,7 +3279,7 @@ td small {
   max-width: 285px;
   margin: 0;
   color: #80877f;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.7;
 }
 .landing-footer {
@@ -3296,13 +3299,13 @@ td small {
 }
 .landing-footer > span {
   color: #92998f;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 1.2px;
 }
 .landing-footer > a:last-child {
   color: #58745f;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
 }
 .faculty-directory-grid {
@@ -3344,7 +3347,7 @@ td small {
 }
 .faculty-count {
   color: #899188;
-  font-size: 9px;
+  font-size: 12px;
 }
 .faculty-directory-card h3 {
   margin: 0 0 5px;
@@ -3355,7 +3358,7 @@ td small {
   margin: 0;
   padding: 10px 0 3px;
   color: #858d84;
-  font-size: 11px;
+  font-size: 13px;
 }
 .classmates-list {
   display: grid;
@@ -3392,11 +3395,11 @@ td small {
 .classmates-course-heading p {
   margin: 0;
   color: #858d84;
-  font-size: 9px;
+  font-size: 12px;
 }
 .classmates-total {
   color: #7d877d;
-  font-size: 9px;
+  font-size: 12px;
 }
 .classmate-people {
   display: grid;
@@ -3410,7 +3413,7 @@ td small {
   gap: 9px;
   min-width: 0;
   color: #4e594f;
-  font-size: 10px;
+  font-size: 12px;
 }
 .classmate-person .avatar {
   display: grid;
@@ -3421,7 +3424,7 @@ td small {
   border-radius: 50%;
   background: #f0f3ee;
   color: #58745f;
-  font-size: 9px;
+  font-size: 12px;
   font-weight: 700;
 }
 .join-course-panel {
@@ -3440,7 +3443,7 @@ td small {
   max-width: 480px;
   margin: 0;
   color: #80877f;
-  font-size: 10px;
+  font-size: 12px;
   line-height: 1.7;
 }
 .join-course-form {
@@ -3450,7 +3453,7 @@ td small {
   display: block;
   margin-bottom: 7px;
   color: #4e554f;
-  font-size: 10px;
+  font-size: 12px;
   font-weight: 600;
 }
 .join-course-form > div {
@@ -3464,7 +3467,7 @@ td small {
   border-radius: 8px;
   padding: 10px 12px;
   background: #fdfdfa;
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 1.5px;
   text-transform: uppercase;
 }
@@ -3480,7 +3483,7 @@ td small {
 .join-request-list h3 {
   margin: 0 0 8px;
   color: #667167;
-  font: 600 11px var(--serif);
+  font: 600 13px var(--serif);
 }
 .join-request-row {
   display: flex;
@@ -3496,18 +3499,18 @@ td small {
 }
 .join-request-row b {
   color: #4a514b;
-  font-size: 10px;
+  font-size: 12px;
 }
 .join-request-row small {
   color: #92998f;
-  font-size: 9px;
+  font-size: 12px;
 }
 .request-status {
   padding: 5px 8px;
   border-radius: 30px;
   background: #f3f0e5;
   color: #8b7b4d;
-  font-size: 8px;
+  font-size: 12px;
   font-weight: 700;
   text-transform: capitalize;
 }
@@ -3547,7 +3550,7 @@ td small {
   max-width: 520px;
   margin: 0 0 10px;
   color: #818980;
-  font-size: 9px;
+  font-size: 12px;
   line-height: 1.6;
 }
 .invite-code-card code {
@@ -3563,7 +3566,7 @@ td small {
 }
 .invite-code-empty {
   color: #8d948c;
-  font-size: 10px;
+  font-size: 12px;
 }
 .invite-code-actions,
 .enrollment-request-actions {
@@ -3576,7 +3579,7 @@ td small {
 .enrollment-request-actions .button {
   min-height: 34px;
   padding: 0 10px;
-  font-size: 9px;
+  font-size: 12px;
 }
 .enrollment-requests-heading,
 .enrollment-request-row {
@@ -3587,11 +3590,11 @@ td small {
 }
 .enrollment-requests-heading > span {
   color: #868f85;
-  font-size: 9px;
+  font-size: 12px;
 }
 .enrollment-requests-card > p {
   margin: 10px 0 0;
-  font-size: 10px;
+  font-size: 12px;
 }
 .enrollment-request-list {
   margin-top: 7px;
@@ -3628,7 +3631,7 @@ td small {
   border-radius: 50%;
   background: #eaf0e9;
   color: #58745f;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
 }
 .faculty-directory-card h2 {
@@ -3639,11 +3642,11 @@ td small {
 .faculty-directory-card p {
   margin: 0 0 7px;
   color: #788078;
-  font-size: 10px;
+  font-size: 12px;
 }
 .faculty-directory-label {
   color: #8e978e;
-  font-size: 7px;
+  font-size: 12px;
   font-weight: 700;
   letter-spacing: 1px;
 }
@@ -3697,7 +3700,7 @@ td small {
   .landing-nav .button {
     min-height: 36px;
     padding: 0 10px;
-    font-size: 9px;
+    font-size: 12px;
   }
   .faculty-directory-content {
     width: min(100% - 36px, 500px);

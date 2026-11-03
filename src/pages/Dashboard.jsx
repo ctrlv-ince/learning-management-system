@@ -363,7 +363,7 @@ export function StudentDashboard({ data, profile }) {
                   tickLine={false}
                   tick={{
                     fill: "#95988f",
-                    fontSize: 10,
+                    fontSize: 12,
                     fontFamily: "DM Sans",
                   }}
                 />
@@ -371,7 +371,7 @@ export function StudentDashboard({ data, profile }) {
                   contentStyle={{
                     borderRadius: 10,
                     border: "1px solid #e8e7e0",
-                    fontSize: 12,
+                    fontSize: 14,
                   }}
                 />
                 <Area
