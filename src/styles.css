@@ -371,6 +371,15 @@ button:focus-visible {
   color: #42654e;
   background: #edf2ed;
 }
+.button.danger {
+  color: #9b3e3e;
+  background: #fae8e7;
+  box-shadow: none;
+}
+.button.danger:hover:not(:disabled) {
+  color: #842f2f;
+  background: #f4d6d4;
+}
 .auth-submit {
   width: 100%;
   margin-top: 7px;
@@ -853,6 +862,222 @@ button:focus-visible {
 }
 .course-row-meta svg {
   color: #829486;
+}
+.dashboard-course-actions {
+  border-top: 1px solid #edf0eb;
+}
+.dashboard-course-actions .course-row {
+  border-top: 0;
+}
+.quick-course-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  padding: 0 0 12px 48px;
+}
+.quick-course-links a {
+  color: #53745e;
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: none;
+}
+.quick-course-links a:hover {
+  text-decoration: underline;
+}
+.continue-learning-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin: 20px 0;
+  padding: 22px 24px;
+  border-color: #dfe8df;
+  background: linear-gradient(115deg, #f7faf6, #fff 75%);
+}
+.continue-learning-panel h2 {
+  margin: 5px 0 4px;
+  font: 600 21px var(--serif);
+  color: #34483a;
+}
+.continue-learning-panel p,
+.load-error-panel p {
+  margin: 0;
+  color: #758078;
+  line-height: 1.55;
+}
+.load-error-panel {
+  display: grid;
+  gap: 12px;
+  max-width: 680px;
+  margin: 48px auto;
+  padding: 28px;
+}
+.load-error-panel h1,
+.load-error-panel h2 {
+  margin: 0;
+  font: 600 24px var(--serif);
+}
+.quiz-follow-up {
+  margin-top: 12px;
+}
+.quiz-follow-up-note,
+.lesson-error-guidance {
+  margin: 10px 0;
+  color: #65766a;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.breadcrumbs {
+  margin: 0 0 14px;
+  color: #778279;
+}
+.breadcrumbs ol {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+.breadcrumbs li + li::before {
+  content: "/";
+  margin-right: 7px;
+  color: #adb5ad;
+}
+.breadcrumbs a {
+  color: #53745e;
+  text-decoration: none;
+}
+.breadcrumbs a:hover {
+  text-decoration: underline;
+}
+.breadcrumbs [aria-current="page"] {
+  color: #4c554e;
+  font-weight: 650;
+}
+.list-search {
+  display: grid;
+  gap: 6px;
+  color: #59675d;
+  font-size: 13px;
+  font-weight: 650;
+}
+.list-search input {
+  min-width: 220px;
+  min-height: 42px;
+  padding: 9px 12px;
+  border: 1px solid #dfe5dd;
+  border-radius: 8px;
+  background: #fff;
+  color: #354239;
+  font: inherit;
+  font-weight: 400;
+}
+.list-search input:focus-visible {
+  outline: 2px solid #62806a;
+  outline-offset: 2px;
+}
+.list-search small {
+  color: #79847b;
+  font-weight: 400;
+}
+.page-list-search {
+  max-width: 520px;
+  margin: 0 0 20px;
+}
+.gradebook-search {
+  margin: 0 0 20px;
+}
+.quiz-progress {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 7px 12px;
+  padding: 12px;
+  border: 1px solid #e4e9e2;
+  border-radius: 9px;
+  background: #f8faf7;
+  color: #53665a;
+  font-size: 13px;
+  font-weight: 650;
+}
+.quiz-progress span:nth-child(2) {
+  color: #78847b;
+  font-size: 12px;
+  font-weight: 500;
+}
+.quiz-progress progress {
+  grid-column: 1 / -1;
+  width: 100%;
+  height: 8px;
+  accent-color: #62806a;
+}
+.quiz-submit-confirm {
+  display: grid;
+  gap: 9px;
+  padding: 13px;
+  border: 1px solid #dfe8df;
+  border-radius: 9px;
+  background: #f7faf6;
+}
+.quiz-submit-confirm p {
+  margin: 0 0 3px;
+  color: #53665a;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.upload-success {
+  margin: 8px 0;
+  padding: 10px 12px;
+  border: 1px solid #d7e6d9;
+  border-radius: 8px;
+  background: #f0f7f0;
+  color: #466c4e;
+  font-size: 14px;
+  line-height: 1.5;
+}
+.attached-materials {
+  margin: 10px 0;
+  padding: 12px;
+  border: 1px solid #e3e8e1;
+  border-radius: 9px;
+  background: #fafbf9;
+}
+.attached-materials > strong {
+  color: #53665a;
+  font-size: 13px;
+}
+.attached-materials ul {
+  display: grid;
+  gap: 8px;
+  margin: 9px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.attached-materials li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 13px;
+}
+.attached-materials a {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: #53745e;
+}
+.attached-materials small {
+  flex: none;
+  color: #818b82;
+}
+.nav-scrim {
+  display: none;
+}
+.sidebar {
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 .activity-panel {
   display: flex;
@@ -1523,6 +1748,26 @@ button:focus-visible {
   align-items: start;
   gap: 16px;
 }
+.lesson-content-grid.quiz-focus-mode {
+  display: block;
+}
+.quiz-focus-aside {
+  width: min(100%, 820px);
+  margin: 18px auto 36px;
+}
+.quiz-focus-aside .quiz-panel {
+  padding: 24px clamp(18px, 4vw, 36px);
+  scroll-margin-top: 24px;
+}
+.quiz-focus-aside .quiz-panel h2 {
+  font-size: 21px;
+}
+.quiz-focus-note {
+  margin: 12px 0;
+  color: #65766a;
+  font-size: 14px;
+  line-height: 1.55;
+}
 .lesson-content {
   padding: 23px 25px;
   min-height: 320px;
@@ -1922,6 +2167,10 @@ button:focus-visible {
   background: #f5f8f5;
   color: #4e6a55;
 }
+.choice-option:focus-within {
+  outline: 2px solid #62806a;
+  outline-offset: 2px;
+}
 .choice-option input {
   position: absolute;
   opacity: 0;
@@ -2144,6 +2393,7 @@ button:focus-visible {
   position: relative;
   overflow: hidden;
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 9px;
   padding: 12px;
@@ -2151,12 +2401,39 @@ button:focus-visible {
   border-radius: 8px;
   color: #67806c;
   cursor: pointer;
+  transition:
+    border-color 0.16s ease,
+    background-color 0.16s ease,
+    outline-color 0.16s ease;
+}
+.form-stack .file-picker {
+  display: flex;
+  color: #67806c;
+}
+.file-picker:hover:not(.is-disabled) {
+  border-color: #90a994;
+  background: #f8faf7;
+}
+.file-picker:focus-within {
+  border-color: #62806a;
+  outline: 2px solid #62806a;
+  outline-offset: 2px;
+}
+.file-picker.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.68;
+}
+.file-picker.is-disabled input {
+  cursor: not-allowed;
 }
 .file-picker > span {
   display: grid;
   gap: 4px;
   font-size: 12px;
   font-weight: 600;
+}
+.file-picker-copy {
+  min-width: 0;
 }
 .file-picker small {
   font-size: 12px;
@@ -2285,6 +2562,7 @@ button:focus-visible {
 }
 .roster-toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-end;
   justify-content: space-between;
   gap: 14px;
@@ -2293,6 +2571,9 @@ button:focus-visible {
 }
 .roster-toolbar label {
   width: min(340px, 100%);
+}
+.roster-toolbar .list-search {
+  width: min(270px, 100%);
 }
 .enroll-form {
   display: flex;
@@ -2442,6 +2723,28 @@ td small {
   font-size: 11px;
   line-height: 1.35;
   white-space: nowrap;
+}
+.attempt-history {
+  margin-top: 5px;
+  color: #6f7b71;
+  font-size: 12px;
+}
+.attempt-history summary {
+  width: fit-content;
+  color: #53745e;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.attempt-history ol {
+  display: grid;
+  gap: 4px;
+  margin: 7px 0 0;
+  padding-left: 20px;
+}
+.attempt-history li {
+  padding-left: 2px;
+  line-height: 1.5;
 }
 .lesson-summary {
   margin: 20px 0;
@@ -2677,6 +2980,14 @@ td small {
   .sidebar.mobile-open {
     transform: translateX(0);
   }
+  .nav-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: 9;
+    display: block;
+    border: 0;
+    background: rgb(28 39 31 / 28%);
+  }
   .main-area {
     margin-left: 0;
     padding-top: 43px;
@@ -2686,8 +2997,8 @@ td small {
     top: 10px;
     left: 12px;
     z-index: 11;
-    width: 32px;
-    height: 32px;
+    width: 44px;
+    height: 44px;
     border: 1px solid #e4e8e1;
     border-radius: 8px;
     background: #fff;
@@ -2743,6 +3054,28 @@ td small {
   }
 }
 @media (max-width: 560px) {
+  .list-search input {
+    min-width: 0;
+    width: 100%;
+  }
+  .roster-toolbar .list-search {
+    width: 100%;
+  }
+  .breadcrumbs ol {
+    font-size: 12px;
+  }
+  .continue-learning-panel {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 14px;
+    padding: 18px;
+  }
+  .continue-learning-panel .button {
+    width: 100%;
+  }
+  .quick-course-links {
+    padding-left: 39px;
+  }
   .page-shell {
     padding: 25px 15px 35px;
   }

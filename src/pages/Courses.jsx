@@ -18,6 +18,7 @@ import {
   useAuth,
   useData,
   PageHeader,
+  Breadcrumbs,
   Loading,
   EmptyPanel,
   semesterLabel,
@@ -153,8 +154,8 @@ export function Courses() {
                 </p>
                 <div className="course-card-footer">
                   <span>
-                    <Users size={14} /> {offering.students?.length ?? 0}{" "}
-                    students
+                    <Users size={14} /> {offering.enrollmentCount ?? offering.students?.length ?? 0}{" "}
+                    {offering.enrollmentCount === 1 || offering.students?.length === 1 ? "student" : "students"}
                   </span>
                   <span>
                     {offering.section?.name} <ArrowRight size={14} />
@@ -189,13 +190,15 @@ export function CoursePage() {
   const [lessons, setLessons] = useState(null);
   const [offering, setOffering] = useState(null);
   const [busy, setBusy] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const load = () =>
     Promise.all([api(`/offerings/${offeringId}/lessons`), api("/offerings")])
       .then(([items, all]) => {
         setLessons(items);
         setOffering(all.find((item) => item._id === offeringId));
+        setLoadError("");
       })
-      .catch((error) => notify(error.message));
+      .catch((error) => setLoadError(error.message));
   useEffect(() => {
     load();
   }, [offeringId]);
@@ -239,9 +242,21 @@ export function CoursePage() {
       notify(error.message);
     }
   }
-  if (!lessons) return <Loading />;
+  if (!lessons && !loadError) return <Loading />;
+  if (loadError)
+    return (
+      <div className="page-shell">
+        <Link to="/courses" className="back-link">← All courses</Link>
+        <section className="panel load-error-panel" role="alert">
+          <h1>Couldn’t load this course</h1>
+          <p>{loadError}</p>
+          <button className="button secondary" onClick={() => { setLessons(null); setLoadError(""); load(); }}>Try again</button>
+        </section>
+      </div>
+    );
   return (
     <div className="page-shell">
+      <Breadcrumbs items={[{ label: "Courses", to: "/courses" }, { label: offering?.course?.title || "Course" }]} />
       <Link to="/courses" className="back-link">
         ← All courses
       </Link>
@@ -291,7 +306,7 @@ export function CoursePage() {
           ) : (
             <EmptyPanel
               title="The page is still blank."
-              body="Add the first lesson to give this course a path."
+              body={faculty ? "Add the first lesson to give this course a path." : "Your faculty member has not published lessons for this course yet."}
             />
           )}
         </section>
@@ -381,7 +396,9 @@ export function LessonRow({ lesson, faculty, index, count, onMove }) {
         </span>
         <strong>{lesson.title}</strong>
         <small>
-          {lesson.description ||
+          {status === "locked"
+            ? "Pass the previous lesson assessment to unlock this lesson."
+            : lesson.description ||
             (lesson.quiz
               ? `Assessment · pass ${lesson.quiz.passingPercent}%`
               : "Lesson materials and notes")}

@@ -16,11 +16,53 @@ import {
 import { api, apiUpload, send } from "../api.js";
 import { validateRequiredValues } from "../formValidation.js";
 import { normalizePresentationNamespacePrefixes } from "../presentationCompatibility.js";
-import { useAuth, Loading } from "../shared.jsx";
+import { useAuth, Loading, Breadcrumbs } from "../shared.jsx";
 
 function formatUploadSize(bytes) {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function FilePicker({
+  name,
+  accept,
+  multiple = false,
+  required = false,
+  disabled = false,
+  title,
+  description,
+  files = [],
+  onChange,
+}) {
+  return (
+    <label className={`file-picker${disabled ? " is-disabled" : ""}`}>
+      <FileText size={18} aria-hidden="true" />
+      <span className="file-picker-copy">
+        {title}
+        <small>{description}</small>
+      </span>
+      <input
+        type="file"
+        name={name}
+        accept={accept}
+        multiple={multiple}
+        required={required}
+        disabled={disabled}
+        aria-label={title}
+        onChange={(event) => onChange(Array.from(event.target.files || []))}
+      />
+      {files.length > 0 && (
+        <span className="selected-upload-file">
+          {files.map((file) => (
+            <span key={`${file.name}-${file.lastModified}-${file.size}`}>
+              <b>{file.name}</b>
+              <small>{formatUploadSize(file.size)} · ready to upload</small>
+            </span>
+          ))}
+        </span>
+      )}
+    </label>
+  );
 }
 
 export function LessonPage() {
@@ -32,9 +74,13 @@ export function LessonPage() {
   const [pageError, setPageError] = useState("");
   const [quizStartError, setQuizStartError] = useState("");
   const [answers, setAnswers] = useState({});
+  const [quizFormError, setQuizFormError] = useState("");
+  const [confirmQuizSubmission, setConfirmQuizSubmission] = useState(false);
+  const quizFormRef = useRef(null);
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(null);
+  const quizPanelRef = useRef(null);
   const load = async () => {
     if (!data) setPageLoading(true);
     setPageError("");
@@ -89,9 +135,35 @@ export function LessonPage() {
     const timer = window.setInterval(update, 1000);
     return () => window.clearInterval(timer);
   }, [data?.session?.expiresAt]);
+  useEffect(() => {
+    if (!data?.session) return undefined;
+    const frame = window.requestAnimationFrame(() =>
+      quizPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+    );
+    return () => window.cancelAnimationFrame(frame);
+  }, [data?.session?._id]);
   async function submitQuiz(event) {
     event.preventDefault();
-    if (!validateRequiredValues(event.currentTarget)) return;
+    if (!data?.quiz) return;
+    const unanswered = data.quiz.questions.filter(
+      (question) => !String(answers[question._id] ?? "").trim(),
+    );
+    if (unanswered.length) {
+      setQuizFormError(
+        `Answer all questions before submitting. ${unanswered.length} ${unanswered.length === 1 ? "question remains" : "questions remain"}.`,
+      );
+      setConfirmQuizSubmission(false);
+      const firstUnanswered = Array.from(
+        quizFormRef.current?.querySelectorAll("fieldset[data-question-id]") || [],
+      ).find((fieldset) => fieldset.dataset.questionId === String(unanswered[0]._id));
+      firstUnanswered?.querySelector("input")?.focus();
+      firstUnanswered?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    setQuizFormError("");
+    setConfirmQuizSubmission(true);
+  }
+  async function confirmQuizSubmit() {
     if (!data?.quiz) return;
     setBusy(true);
     try {
@@ -106,6 +178,7 @@ export function LessonPage() {
       );
       setResult(response);
       setAnswers({});
+      setConfirmQuizSubmission(false);
       notify(response.message);
       await load();
     } catch (error) {
@@ -164,6 +237,12 @@ export function LessonPage() {
             {pageError ||
               "This lesson may be locked, unpublished, or no longer available."}
           </p>
+          <p className="lesson-error-guidance">
+            If the message says an earlier assessment is required, open the course and finish that lesson first.
+          </p>
+          <button className="button secondary" type="button" onClick={load}>
+            Try again
+          </button>
           <Link className="button secondary" to="/courses">
             Back to my courses
           </Link>
@@ -182,8 +261,13 @@ export function LessonPage() {
   };
   const hasPassedQuiz =
     data.attempts?.some((attempt) => attempt.passed) || false;
+  const quizInProgress = !faculty && Boolean(data.session);
+  const answeredQuestionCount = Object.values(answers).filter((answer) =>
+    String(answer ?? "").trim(),
+  ).length;
   return (
     <div className="page-shell">
+      <Breadcrumbs items={[{ label: "Courses", to: "/courses" }, { label: "Course", to: `/courses/${lesson.offering}` }, { label: `Lesson ${String(lesson.sequence).padStart(2, "0")}: ${lesson.title}` }]} />
       <Link to={`/courses/${lesson.offering}`} className="back-link">
         ← Back to course
       </Link>
@@ -199,8 +283,8 @@ export function LessonPage() {
         </h1>
         <p className="muted">{lesson.description}</p>
       </div>
-      <div className="lesson-content-grid">
-        <article className="lesson-content panel">
+      <div className={`lesson-content-grid${quizInProgress ? " quiz-focus-mode" : ""}`}>
+        {!quizInProgress && <article className="lesson-content panel">
           <div className="content-kicker">
             <span className="lesson-content-icon">
               <BookOpen size={16} />
@@ -290,8 +374,8 @@ export function LessonPage() {
               </a>
             );
           })}
-        </article>
-        <aside className="lesson-aside">
+        </article>}
+        <aside className={`lesson-aside${quizInProgress ? " quiz-focus-aside" : ""}`}>
           {faculty && (
             <>
               <section className="panel lesson-publication">
@@ -344,7 +428,7 @@ export function LessonPage() {
             </>
           )}
           {(quiz || faculty) && (
-            <section className="panel quiz-panel">
+            <section ref={quizPanelRef} className="panel quiz-panel">
               <div className="quiz-panel-top">
                 <span className="quiz-icon">
                   <CircleHelp size={18} />
@@ -380,6 +464,7 @@ export function LessonPage() {
                 </>
               ) : (
                 <>
+                  {quizInProgress && <p className="quiz-focus-note">Lesson content is hidden while you take the quiz. It will be available again after you submit.</p>}
                   <div className="quiz-facts">
                     <span>
                       <b>{quiz.questions.length}</b> questions
@@ -417,12 +502,24 @@ export function LessonPage() {
                           : "Not quite yet."}
                       </span>
                       <b>{result.attempt.percent}%</b>
+                      <small className="quiz-pass-mark">Passing score: {quiz.passingPercent}%</small>
                       <small>
                         {result.attempt.earnedPoints} /{" "}
                         {result.attempt.totalPoints} points · attempt{" "}
                         {result.attempt.attemptNumber}
                       </small>
                     </div>
+                  )}
+                  {result && (
+                    result.attempt.passed ? (
+                      <Link className="button primary full-width quiz-follow-up" to={`/courses/${lesson.offering}`}>
+                        Continue to your course <ArrowRight size={15} />
+                      </Link>
+                    ) : (
+                      <p className="quiz-follow-up-note" role="status">
+                        You need {quiz.passingPercent}% to pass. You have made {result.attempt.attemptNumber} {result.attempt.attemptNumber === 1 ? "attempt" : "attempts"}; retry when you’re ready.
+                      </p>
+                    )
                   )}
                   {data.attempts?.length > 0 && (
                     <p className="attempt-note">
@@ -461,10 +558,17 @@ export function LessonPage() {
                   )}
                   {!data.attempts?.some((item) => item.passed) &&
                     data.session && (
-                      <form onSubmit={submitQuiz} className="quiz-form">
+                      <form ref={quizFormRef} noValidate onSubmit={submitQuiz} className="quiz-form">
+                        <div className="quiz-progress" role="status" aria-live="polite">
+                          <span>{answeredQuestionCount} of {quiz.questions.length} answered</span>
+                          <span>{quiz.questions.length - answeredQuestionCount} remaining</span>
+                          <progress max={quiz.questions.length} value={answeredQuestionCount} aria-label="Quiz questions answered" />
+                        </div>
+                        {quizFormError && <p className="upload-error" role="alert">{quizFormError}</p>}
                         {quiz.questions.map((question, index) => (
                           <fieldset
                             key={question._id}
+                            data-question-id={question._id}
                             disabled={secondsLeft === 0}
                           >
                             <legend>
@@ -492,12 +596,11 @@ export function LessonPage() {
                                     name={question._id}
                                     value={choice}
                                     checked={answers[question._id] === choice}
-                                    onChange={() =>
-                                      setAnswers((current) => ({
-                                        ...current,
-                                        [question._id]: choice,
-                                      }))
-                                    }
+                                    onChange={() => {
+                                      setAnswers((current) => ({ ...current, [question._id]: choice }));
+                                      setQuizFormError("");
+                                      setConfirmQuizSubmission(false);
+                                    }}
                                     required
                                   />
                                   <span className="choice-mark" />
@@ -508,34 +611,41 @@ export function LessonPage() {
                               <input
                                 className="short-answer"
                                 value={answers[question._id] || ""}
-                                onChange={(event) =>
-                                  setAnswers((current) => ({
-                                    ...current,
-                                    [question._id]: event.target.value,
-                                  }))
-                                }
+                                onChange={(event) => {
+                                  setAnswers((current) => ({ ...current, [question._id]: event.target.value }));
+                                  setQuizFormError("");
+                                  setConfirmQuizSubmission(false);
+                                }}
+                                data-question-id={question._id}
                                 placeholder="Write your answer…"
                                 required
                               />
                             )}
                           </fieldset>
                         ))}
-                        <button
+                        {!confirmQuizSubmission && <button
                           className="button primary full-width"
                           disabled={busy}
                         >
                           {busy
                             ? "Checking your answers…"
-                            : "Submit for review"}
+                            : confirmQuizSubmission ? "Review your answers" : "Review before submitting"}
                           <ArrowRight size={15} />
-                        </button>
+                        </button>}
+                        {confirmQuizSubmission && (
+                          <div className="quiz-submit-confirm" role="group" aria-label="Confirm quiz submission">
+                            <p>You’ve answered all {quiz.questions.length} questions. Submitting will grade this attempt.</p>
+                            <button type="button" className="button secondary full-width" onClick={() => setConfirmQuizSubmission(false)}>Go back and review</button>
+                            <button type="button" className="button primary full-width" disabled={busy} onClick={confirmQuizSubmit}>{busy ? "Checking your answers…" : "Submit quiz now"}</button>
+                          </div>
+                        )}
                       </form>
                     )}
                 </>
               )}
             </section>
           )}
-          <div className="unlock-note">
+          {!quizInProgress && <div className="unlock-note">
             <span className="unlock-spark">✳</span>
             <p>
               {faculty
@@ -544,7 +654,7 @@ export function LessonPage() {
                   ? "Pass the assessment to open the next lesson."
                   : "Your progress carries with you, wherever you are."}
             </p>
-          </div>
+          </div>}
         </aside>
       </div>
     </div>
@@ -885,6 +995,7 @@ function QuizImport({ lessonId, quiz, materials = [], onSaved }) {
   const [publishQuiz, setPublishQuiz] = useState(quiz?.published ?? true);
   const [progress, setProgress] = useState(null);
   const [uploadError, setUploadError] = useState("");
+  const [uploadSuccess, setUploadSuccess] = useState("");
   const [questions, setQuestions] = useState([]);
   const [questionSource, setQuestionSource] = useState("document");
   const [selectedFile, setSelectedFile] = useState(null);
@@ -913,6 +1024,7 @@ function QuizImport({ lessonId, quiz, materials = [], onSaved }) {
     setBusy(true);
     setProgress(0);
     setUploadError("");
+    setUploadSuccess("");
     try {
       const form = new FormData();
       form.append("file", file);
@@ -930,6 +1042,7 @@ function QuizImport({ lessonId, quiz, materials = [], onSaved }) {
         })),
       );
       setQuestionSource("document");
+      setUploadSuccess(`${response.questions.length} questions extracted. Review each question and confirm the correct answer before saving.`);
       notify(
         `${response.questions.length} questions extracted. Review each one.`,
       );
@@ -1052,28 +1165,20 @@ function QuizImport({ lessonId, quiz, materials = [], onSaved }) {
             {uploadError}
           </p>
         )}
-        <label>
-          Quiz document{" "}
-          <span className="optional">TXT, PDF, DOCX OR PPTX · 5 MB MAX</span>
-          <input
-            name="file"
-            type="file"
-            accept=".txt,.pdf,.docx,.pptx"
-            onChange={(event) => {
-              setSelectedFile(event.target.files?.[0] || null);
-              setUploadError("");
-            }}
-            required
-          />
-          {selectedFile && (
-            <span className="selected-upload-file">
-              <b>{selectedFile.name}</b>
-              <small>
-                {formatUploadSize(selectedFile.size)} · ready to upload
-              </small>
-            </span>
-          )}
-        </label>
+        {uploadSuccess && <p className="upload-success" role="status" aria-live="polite">{uploadSuccess}</p>}
+        <FilePicker
+          name="file"
+          accept=".txt,.pdf,.docx,.pptx"
+          required
+          disabled={busy}
+          title="Choose a quiz document"
+          description="TXT, PDF, DOCX, or PPTX · up to 5 MB"
+          files={selectedFile ? [selectedFile] : []}
+          onChange={(files) => {
+            setSelectedFile(files[0] || null);
+            setUploadError("");
+          }}
+        />
         <button className="button secondary" disabled={busy}>
           <FileText size={15} /> {busy ? "Extracting…" : "Extract questions"}
         </button>
@@ -1503,6 +1608,7 @@ export function UploadMaterials({ lessonId, materials = [], onUploaded }) {
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(null);
   const [uploadError, setUploadError] = useState("");
+  const [uploadSuccess, setUploadSuccess] = useState("");
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [summaryBusy, setSummaryBusy] = useState("");
   const [draft, setDraft] = useState(null);
@@ -1518,10 +1624,12 @@ export function UploadMaterials({ lessonId, materials = [], onUploaded }) {
     setBusy(true);
     setProgress(0);
     setUploadError("");
+    setUploadSuccess("");
     try {
       await apiUpload(`/lessons/${lessonId}/materials`, form, {
         onProgress: setProgress,
       });
+      setUploadSuccess(`${selectedFiles.length} ${selectedFiles.length === 1 ? "file" : "files"} uploaded and attached to this lesson.`);
       notify("Learning materials uploaded.");
       uploadForm.reset();
       setSelectedFiles([]);
@@ -1582,34 +1690,20 @@ export function UploadMaterials({ lessonId, materials = [], onUploaded }) {
         Add a PowerPoint to this lesson so students can view it here without
         downloading.
       </p>
-      <label className="file-picker">
-        <FileText size={17} />
-        <span>
-          Choose PowerPoint or other material
-          <small>Up to 5 files, 15 MB each</small>
-        </span>
-        <input
-          type="file"
-          name="files"
-          multiple
-          accept=".pdf,.docx,.pptx,.jpg,.jpeg,.png,.webp,.mp4"
-          onChange={(event) => {
-            setSelectedFiles(Array.from(event.target.files || []));
-            setUploadError("");
-          }}
-          required
-        />
-        {selectedFiles.length > 0 && (
-          <span className="selected-upload-file">
-            {selectedFiles.map((file) => (
-              <span key={`${file.name}-${file.lastModified}`}>
-                <b>{file.name}</b>
-                <small>{formatUploadSize(file.size)}</small>
-              </span>
-            ))}
-          </span>
-        )}
-      </label>
+      <FilePicker
+        name="files"
+        accept=".pdf,.docx,.pptx,.jpg,.jpeg,.png,.webp,.mp4"
+        multiple
+        required
+        disabled={busy}
+        title="Choose PowerPoint or other material"
+        description="Up to 5 files, 15 MB each"
+        files={selectedFiles}
+        onChange={(files) => {
+          setSelectedFiles(files);
+          setUploadError("");
+        }}
+      />
       {busy && progress !== null && (
         <div className="upload-progress" role="status" aria-live="polite">
           <div className="upload-progress-label">
@@ -1631,6 +1725,20 @@ export function UploadMaterials({ lessonId, materials = [], onUploaded }) {
         <p className="upload-error" role="alert">
           {uploadError}
         </p>
+      )}
+      {uploadSuccess && <p className="upload-success" role="status" aria-live="polite">{uploadSuccess}</p>}
+      {materials.length > 0 && (
+        <div className="attached-materials">
+          <strong>Attached to this lesson ({materials.length})</strong>
+          <ul>
+            {materials.map((file) => (
+              <li key={file.url}>
+                <a href={file.url} target="_blank" rel="noreferrer">{file.name}</a>
+                <small>{(file.size / 1024 / 1024).toFixed(1)} MB</small>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
       {presentations.length > 0 && (
         <div className="ai-summary-tools">

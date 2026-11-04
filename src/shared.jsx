@@ -30,9 +30,27 @@ export function PageHeader({ eyebrow, title, detail, action }) {
   );
 }
 
+export function Breadcrumbs({ items = [] }) {
+  return (
+    <nav className="breadcrumbs" aria-label="Breadcrumb">
+      <ol>
+        {items.map((item, index) => (
+          <li key={`${item.label}-${index}`}>
+            {item.to && index < items.length - 1 ? (
+              <Link to={item.to}>{item.label}</Link>
+            ) : (
+              <span aria-current="page">{item.label}</span>
+            )}
+          </li>
+        ))}
+      </ol>
+    </nav>
+  );
+}
+
 export function Loading() {
   return (
-    <div className="loading">
+    <div className="loading" role="status" aria-live="polite">
       <span className="spinner" />
       Finding your place…
     </div>

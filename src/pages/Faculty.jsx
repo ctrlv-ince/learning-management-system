@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import {
   ArrowRight,
   ArrowUpRight,
@@ -29,16 +29,28 @@ import {
 
 export function StudentsPage() {
   const enrollmentLimit = 40;
+  const [searchParams] = useSearchParams();
   const { data, loading, error } = useData("/offerings");
   const { notify } = useAuth();
-  const [selected, setSelected] = useState("");
+  const [selected, setSelected] = useState(() => searchParams.get("offering") || "");
   const [students, setStudents] = useState(null);
   const [requests, setRequests] = useState(null);
   const [inviteCode, setInviteCode] = useState(null);
   const [inviteBusy, setInviteBusy] = useState(false);
   const [email, setEmail] = useState("");
+  const [studentSearch, setStudentSearch] = useState("");
   const [removingStudent, setRemovingStudent] = useState("");
   const courseIsFull = (students?.length || 0) >= enrollmentLimit;
+  const filteredStudents = (students || []).filter((student) => {
+    const query = studentSearch.trim().toLowerCase();
+    return !query || [
+      fullName(student),
+      student.email,
+      student.profile?.studentId,
+      student.profile?.program?.code,
+      student.profile?.currentYearLevel,
+    ].some((value) => String(value || "").toLowerCase().includes(query));
+  });
   async function loadOfferingRoster(offeringId = selected) {
     if (!offeringId) return;
     const [roster, pending, invite] = await Promise.all([
@@ -178,6 +190,12 @@ export function StudentsPage() {
                 </button>
               </form>
             )}
+            {selected && students && (
+              <label className="list-search">
+                Find an enrolled student
+                <input type="search" value={studentSearch} onChange={(event) => setStudentSearch(event.target.value)} placeholder="Name, email, or student ID" />
+              </label>
+            )}
           </div>
           {selected && students && (
             <p className={`enrollment-capacity ${courseIsFull ? "full" : ""}`}>
@@ -225,7 +243,7 @@ export function StudentsPage() {
                       </button>
                       <button
                         type="button"
-                        className="text-action"
+                        className="button danger"
                         onClick={revokeInviteCode}
                       >
                         Revoke
@@ -308,7 +326,7 @@ export function StudentsPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {students.map((student) => (
+                    {filteredStudents.map((student) => (
                       <tr key={student._id}>
                         <td>
                           <div className="table-person">
@@ -340,6 +358,7 @@ export function StudentsPage() {
                         </td>
                       </tr>
                     ))}
+                    {!filteredStudents.length && <tr><td colSpan="5" className="table-empty">No enrolled students match “{studentSearch}”.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -365,7 +384,16 @@ export function StudentsPage() {
 
 export function StudentClassmatesPage() {
   const { data, loading, error } = useData("/classmates");
+  const [search, setSearch] = useState("");
   if (loading) return <Loading />;
+  const query = search.trim().toLowerCase();
+  const filteredOfferings = (data || []).map((offering) => {
+    const courseMatches = `${offering.course?.code || ""} ${offering.course?.title || ""} ${offering.section?.name || ""}`.toLowerCase().includes(query);
+    const classmates = courseMatches
+      ? offering.classmates
+      : offering.classmates.filter((person) => fullName(person).toLowerCase().includes(query));
+    return { ...offering, classmates };
+  }).filter((offering) => offering.classmates.length || `${offering.course?.code || ""} ${offering.course?.title || ""} ${offering.section?.name || ""}`.toLowerCase().includes(query));
   return (
     <div className="page-shell">
       <PageHeader
@@ -373,11 +401,17 @@ export function StudentClassmatesPage() {
         title="Classmates."
         detail="Students enrolled in the same subjects as you, organized by course."
       />
+      {!error && data?.length > 0 && (
+        <label className="list-search page-list-search">
+          Search classmates or courses
+          <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Name, course, or section" />
+        </label>
+      )}
       {error ? (
         <EmptyPanel title="Couldn’t load your classmates." body={error} />
-      ) : data?.length ? (
+      ) : filteredOfferings.length ? (
         <div className="classmates-list">
-          {data.map((offering) => (
+          {filteredOfferings.map((offering) => (
             <section className="panel classmates-course" key={offering.id}>
               <div className="classmates-course-heading">
                 <span className="classmates-course-icon">
@@ -415,6 +449,8 @@ export function StudentClassmatesPage() {
             </section>
           ))}
         </div>
+      ) : data?.length ? (
+        <EmptyPanel title="No matching classmates or courses." body="Try another name, course title, or section." />
       ) : (
         <EmptyPanel
           title="No course enrollments yet."
@@ -430,7 +466,16 @@ export function StudentClassmatesPage() {
 export function FacultyDirectoryPage() {
   const { data, loading, error } = useData("/faculty");
   const { session } = useAuth();
+  const [search, setSearch] = useState("");
   if (loading) return <Loading />;
+  const query = search.trim().toLowerCase();
+  const filteredDepartments = (data || []).map((department) => {
+    const departmentMatches = `${department.code} ${department.name}`.toLowerCase().includes(query);
+    const faculty = departmentMatches
+      ? department.faculty
+      : department.faculty.filter((person) => fullName(person).toLowerCase().includes(query));
+    return { ...department, faculty };
+  }).filter((department) => department.faculty.length || `${department.code} ${department.name}`.toLowerCase().includes(query));
   return (
     <main className="landing-page faculty-directory-page">
       <header className="landing-nav">
@@ -462,11 +507,17 @@ export function FacultyDirectoryPage() {
           title="Faculty directory."
           detail="Meet the faculty across campus, grouped by department."
         />
+        {!error && data?.length > 0 && (
+          <label className="list-search page-list-search">
+            Search faculty or departments
+            <input type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Faculty name or department" />
+          </label>
+        )}
         {error ? (
           <EmptyPanel title="Could not load the faculty list." body={error} />
         ) : (
-          <div className="faculty-departments" id="departments">
-            {data?.map((department) => (
+          filteredDepartments.length ? <div className="faculty-departments" id="departments">
+            {filteredDepartments.map((department) => (
               <section className="faculty-department" key={department.code}>
                 <div className="faculty-department-heading">
                   <span className="eyebrow">{department.code}</span>
@@ -500,7 +551,7 @@ export function FacultyDirectoryPage() {
                 )}
               </section>
             ))}
-          </div>
+          </div> : <EmptyPanel title="No matching faculty or departments." body="Try a different name or department." />
         )}
       </div>
     </main>
@@ -508,11 +559,13 @@ export function FacultyDirectoryPage() {
 }
 
 export function GradesPage() {
+  const [searchParams] = useSearchParams();
   const { data: offerings, loading } = useData("/offerings");
   const { session, notify } = useAuth();
-  const [selected, setSelected] = useState("");
+  const [selected, setSelected] = useState(() => searchParams.get("offering") || "");
   const [gradeData, setGradeData] = useState(null);
   const [reportSort, setReportSort] = useState("surname");
+  const [gradeSearch, setGradeSearch] = useState("");
   const faculty = session.user.role === "faculty";
   const orderedAttempts = gradeData?.attempts
     ? [...gradeData.attempts].sort((a, b) => {
@@ -545,6 +598,15 @@ export function GradesPage() {
             ),
       )
     : [];
+  const gradeQuery = gradeSearch.trim().toLowerCase();
+  const matchesGradeSearch = (person, courseTitle = "") =>
+    !gradeQuery ||
+    `${fullName(person)} ${person?.email || ""} ${courseTitle}`
+      .toLowerCase()
+      .includes(gradeQuery);
+  const filteredCourseGrades = faculty
+    ? orderedCourseGrades.filter((item) => matchesGradeSearch(item.student))
+    : orderedCourseGrades;
   const quizScoreLookup = new Map();
   const attemptsByStudentQuiz = new Map();
   for (const attempt of [...(gradeData?.attempts || [])].sort(
@@ -566,6 +628,15 @@ export function GradesPage() {
       return [key, { count: run.length, passed: run.at(-1)?.passed || false }];
     }),
   );
+  const filteredAttempts = [...attemptsByStudentQuiz.entries()]
+    .map(([key, history]) => ({ key, history, latest: history.at(-1) }))
+    .filter(({ latest }) => matchesGradeSearch(latest.student, latest.quiz?.lesson?.title))
+    .sort((a, b) => {
+      if (reportSort === "score") return (b.latest.percent ?? 0) - (a.latest.percent ?? 0);
+      return (a.latest.student?.lastName || "").localeCompare(b.latest.student?.lastName || "") ||
+        (a.latest.student?.firstName || "").localeCompare(b.latest.student?.firstName || "") ||
+        new Date(b.latest.submittedAt) - new Date(a.latest.submittedAt);
+    });
   const orderedQuizSummary = [...orderedCourseGrades].sort((a, b) =>
     reportSort === "score"
       ? (b.quizAverage ?? -1) - (a.quizAverage ?? -1) ||
@@ -573,6 +644,7 @@ export function GradesPage() {
       : (a.student?.lastName || "").localeCompare(b.student?.lastName || "") ||
         (a.student?.firstName || "").localeCompare(b.student?.firstName || ""),
   );
+  const filteredQuizSummary = orderedQuizSummary.filter((item) => matchesGradeSearch(item.student));
   useEffect(() => {
     if (selected)
       api(`/offerings/${selected}/grades`)
@@ -744,6 +816,11 @@ export function GradesPage() {
           </div>
         ) : gradeData ? (
           <>
+            <label className="list-search gradebook-search no-print">
+              Search this gradebook
+              <input type="search" value={gradeSearch} onChange={(event) => setGradeSearch(event.target.value)} placeholder={faculty ? "Student name or email" : "Lesson or assessment"} />
+              <small>Search filters the rows shown on screen.</small>
+            </label>
             {faculty && (
               <h2 className="grade-report-print-title">
                 {offerings?.find((item) => item._id === selected)?.course
@@ -805,7 +882,7 @@ export function GradesPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {orderedQuizSummary.map((item) => (
+                        {filteredQuizSummary.map((item) => (
                           <tr key={item.studentId}>
                             <td>{fullName(item.student) || "Student"}</td>
                             {gradeData.quizColumns.map((quiz) => {
@@ -838,6 +915,7 @@ export function GradesPage() {
                             </td>
                           </tr>
                         ))}
+                        {!filteredQuizSummary.length && gradeQuery && <tr><td colSpan={gradeData.quizColumns.length + 3} className="table-empty">No students match “{gradeSearch}”.</td></tr>}
                       </tbody>
                     </table>
                   </div>
@@ -849,6 +927,7 @@ export function GradesPage() {
               </>
             )}
             <h2 className="table-section-title">Quiz attempts</h2>
+            <p className="muted gradebook-calculation-note">Showing the latest result for each student and quiz. Expand a row to review earlier attempts.</p>
             {gradeData.attempts.length ? (
               <div className="table-wrap">
                 <table>
@@ -862,12 +941,22 @@ export function GradesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {orderedAttempts.map((attempt) => (
-                      <tr key={attempt._id}>
+                    {filteredAttempts.map(({ key, history, latest: attempt }) => (
+                      <tr key={key}>
                         <td>
-                          {faculty
+                          <strong>{faculty
                             ? fullName(attempt.student)
-                            : attempt.quiz?.lesson?.title || "Lesson quiz"}
+                            : attempt.quiz?.lesson?.title || "Lesson quiz"}</strong>
+                          <details className="attempt-history">
+                            <summary>{history.length} {history.length === 1 ? "attempt" : "attempts"} · View history</summary>
+                            <ol>
+                              {history.map((entry, index) => (
+                                <li key={entry._id}>
+                                  Attempt {entry.attemptNumber || index + 1}: {entry.percent ?? 0}% · {entry.passed ? "Passed" : "Not passed"} · {new Date(entry.submittedAt).toLocaleDateString()}
+                                </li>
+                              ))}
+                            </ol>
+                          </details>
                         </td>
                         <td>
                           <span
@@ -885,6 +974,11 @@ export function GradesPage() {
                         </td>
                         {faculty && (
                           <td>
+                            <small className="grade-attempt-count">
+                              {currentQuizRun.get(key)?.passed
+                                ? `Passed in ${currentQuizRun.get(key)?.count} ${currentQuizRun.get(key)?.count === 1 ? "attempt" : "attempts"}`
+                                : `${currentQuizRun.get(key)?.count ?? history.length} ${currentQuizRun.get(key)?.count === 1 ? "attempt" : "attempts"} so far`}
+                            </small>
                             <button
                               className="text-action no-print"
                               onClick={() => resetProgress(attempt)}
@@ -895,6 +989,7 @@ export function GradesPage() {
                         )}
                       </tr>
                     ))}
+                    {!filteredAttempts.length && gradeQuery && <tr><td colSpan={faculty ? 5 : 4} className="table-empty">No quiz attempts match “{gradeSearch}”.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -917,7 +1012,7 @@ export function GradesPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {orderedCourseGrades.map((item) => {
+                    {filteredCourseGrades.map((item) => {
                       return (
                         <tr key={item.studentId}>
                           {faculty && (
@@ -936,6 +1031,7 @@ export function GradesPage() {
                         </tr>
                       );
                     })}
+                    {!filteredCourseGrades.length && gradeQuery && <tr><td colSpan={faculty ? 3 : 2} className="table-empty">No grade rows match “{gradeSearch}”.</td></tr>}
                   </tbody>
                 </table>
               </div>

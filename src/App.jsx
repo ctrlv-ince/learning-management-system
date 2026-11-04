@@ -62,7 +62,7 @@ function App() {
         />
       </Routes>
       {notice && (
-        <div className="toast">
+        <div className="toast" role="status" aria-live="polite">
           <CheckCircle2 size={17} />
           {notice}
         </div>

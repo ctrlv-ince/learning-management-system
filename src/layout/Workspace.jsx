@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Link,
   Navigate,
@@ -35,9 +35,31 @@ import { LessonPage } from "../pages/LessonPage.jsx";
 export function Workspace() {
   const { session, setSession } = useAuth();
   const [mobileNav, setMobileNav] = useState(false);
+  const menuButtonRef = useRef(null);
+  const sidebarRef = useRef(null);
+  const mainRef = useRef(null);
+  const wasMobileNavOpen = useRef(false);
   const location = useLocation();
   const navigate = useNavigate();
   const role = session.user.role;
+  useEffect(() => {
+    if (mainRef.current) mainRef.current.inert = mobileNav;
+    if (mobileNav) {
+      wasMobileNavOpen.current = true;
+      const focusFrame = window.requestAnimationFrame(() => sidebarRef.current?.querySelector(".nav-item")?.focus());
+      const closeOnEscape = (event) => {
+        if (event.key === "Escape") setMobileNav(false);
+      };
+      window.addEventListener("keydown", closeOnEscape);
+      return () => {
+        window.cancelAnimationFrame(focusFrame);
+        window.removeEventListener("keydown", closeOnEscape);
+      };
+    }
+    if (wasMobileNavOpen.current) menuButtonRef.current?.focus();
+    wasMobileNavOpen.current = false;
+    return undefined;
+  }, [mobileNav]);
   const nav =
     role === "faculty"
       ? [
@@ -79,7 +101,7 @@ export function Workspace() {
   }
   return (
     <div className="workspace">
-      <aside className={`sidebar ${mobileNav ? "mobile-open" : ""}`}>
+      <aside ref={sidebarRef} id="workspace-navigation" aria-label="Workspace navigation" className={`sidebar ${mobileNav ? "mobile-open" : ""}`}>
         <Link className="brand sidebar-brand" to="/">
           <BrandIcon /> Modulink
         </Link>
@@ -98,7 +120,8 @@ export function Workspace() {
               {group.items.map((item) => (
                 <Link
                   onClick={() => setMobileNav(false)}
-                  className={`nav-item ${location.pathname === item.to || (item.to === "/courses" && location.pathname.startsWith("/courses/")) ? "selected" : ""}`}
+                  aria-current={location.pathname === item.to || (item.to === "/courses" && (location.pathname.startsWith("/courses/") || location.pathname.startsWith("/lesson/"))) ? "page" : undefined}
+                  className={`nav-item ${location.pathname === item.to || (item.to === "/courses" && (location.pathname.startsWith("/courses/") || location.pathname.startsWith("/lesson/"))) ? "selected" : ""}`}
                   to={item.to}
                   key={item.to}
                 >
@@ -140,14 +163,18 @@ export function Workspace() {
           </button>
         </div>
       </aside>
+      {mobileNav && <button className="nav-scrim" type="button" aria-label="Close navigation" onClick={() => setMobileNav(false)} />}
       <button
-        aria-label="Open navigation"
+        ref={menuButtonRef}
+        aria-label={mobileNav ? "Close navigation" : "Open navigation"}
+        aria-expanded={mobileNav}
+        aria-controls="workspace-navigation"
         onClick={() => setMobileNav(!mobileNav)}
         className="mobile-menu"
       >
         <Menu />
       </button>
-      <main className="main-area">
+      <main ref={mainRef} className="main-area">
         <Routes>
           <Route index element={<Dashboard />} />
           <Route path="courses" element={<Courses />} />

@@ -676,14 +676,20 @@ router.get(
               ),
             },
           };
-    const offerings = await Offering.find(filter)
-      .select(req.user.role === "student" ? "-students" : "")
+    const offeringRecords = await Offering.find(filter)
       .populate("course", "code title description")
       .populate("academicYear", "label current")
       .populate("section", "name yearLevel")
       .populate("faculty", "firstName lastName")
       .sort("-createdAt")
       .lean();
+    const offerings =
+      req.user.role === "student"
+        ? offeringRecords.map(({ students = [], ...offering }) => ({
+            ...offering,
+            enrollmentCount: students.length,
+          }))
+        : offeringRecords;
     return success(res, offerings);
   }),
 );

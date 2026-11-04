@@ -30,15 +30,18 @@ import {
 
 export function Dashboard() {
   const { session } = useAuth();
-  const { data, loading } = useData("/dashboard");
+  const { data, loading, error, refresh } = useData("/dashboard");
   const faculty = session.user.role === "faculty";
   if (loading) return <Loading />;
   if (!data)
     return (
-      <EmptyPanel
-        title="Couldn’t load your overview"
-        body="Refresh the page and try again."
-      />
+      <div className="page-shell">
+        <section className="panel load-error-panel" role="alert">
+          <h2>Couldn’t load your overview</h2>
+          <p>{error || "Check your connection, then try again."}</p>
+          <button className="button secondary" onClick={refresh}>Try again</button>
+        </section>
+      </div>
     );
   return (
     <div className="page-shell">
@@ -130,12 +133,14 @@ export function FacultyDashboard({ data }) {
           {data.offerings.length ? (
             <div className="course-list">
               {data.offerings.slice(0, 5).map((offering, i) => (
-                <CourseRow
-                  key={offering._id}
-                  offering={offering}
-                  index={i}
-                  showRoster
-                />
+                <div className="dashboard-course-actions" key={offering._id}>
+                  <CourseRow offering={offering} index={i} showRoster />
+                  <div className="quick-course-links">
+                    <Link to={`/courses/${offering._id}`}>Manage lessons</Link>
+                    <Link to={`/students?offering=${encodeURIComponent(offering._id)}`}>View students</Link>
+                    <Link to={`/grades?offering=${encodeURIComponent(offering._id)}`}>Open gradebook</Link>
+                  </div>
+                </div>
               ))}
             </div>
           ) : (
@@ -218,6 +223,40 @@ export function StudentDashboard({ data, profile }) {
     profile?.section?.name || "Section not assigned",
   );
   const [savingYearLevel, setSavingYearLevel] = useState(false);
+  const [nextLesson, setNextLesson] = useState(null);
+  const [nextLessonLoading, setNextLessonLoading] = useState(true);
+  const [nextLessonError, setNextLessonError] = useState("");
+  const [nextLessonRetry, setNextLessonRetry] = useState(0);
+  useEffect(() => {
+    let active = true;
+    async function findNextLesson() {
+      setNextLessonLoading(true);
+      setNextLessonError("");
+      try {
+        const lessonResults = await Promise.allSettled(
+          (data.offerings || []).map(async (offering) => ({
+            offering,
+            lessons: await api(`/offerings/${offering._id}/lessons`),
+          })),
+        );
+        const candidate = lessonResults
+          .filter((result) => result.status === "fulfilled")
+          .map((result) => result.value)
+          .flatMap(({ offering, lessons }) => lessons.map((lesson) => ({ ...lesson, offering })))
+          .find((lesson) => lesson.status === "available");
+        if (active) setNextLesson(candidate || null);
+      } catch (error) {
+        if (active) {
+          setNextLesson(null);
+          setNextLessonError(error.message || "Could not check lesson access.");
+        }
+      } finally {
+        if (active) setNextLessonLoading(false);
+      }
+    }
+    findNextLesson();
+    return () => { active = false; };
+  }, [data.offerings, nextLessonRetry]);
   useEffect(() => {
     setYearLevel(profile?.currentYearLevel || "");
     setSectionName(profile?.section?.name || "Section not assigned");
@@ -299,6 +338,20 @@ export function StudentDashboard({ data, profile }) {
         </div>
         <div className="banner-orbit">✳</div>
       </section>
+      <section className="panel continue-learning-panel" aria-live="polite">
+        <div>
+          <span className="eyebrow">YOUR NEXT STEP</span>
+          <h2>{nextLessonLoading ? "Finding your next lesson…" : nextLesson ? nextLesson.title : nextLessonError ? "Couldn’t check your next lesson" : "You’re all caught up"}</h2>
+          <p>{nextLesson ? `${nextLesson.offering.course?.title || "Course"} · Lesson ${nextLesson.sequence}` : nextLessonLoading ? "Checking your enrolled courses." : nextLessonError ? nextLessonError : data.offerings.length ? "There are no unlocked lessons waiting right now. Check back when your faculty publishes the next lesson." : "Join a course with an invite code to get started."}</p>
+        </div>
+        {nextLesson ? (
+          <Link className="button primary" to={`/lesson/${nextLesson._id}`}>Continue learning <ArrowRight size={15} /></Link>
+        ) : !nextLessonLoading && nextLessonError ? (
+          <button className="button secondary" onClick={() => setNextLessonRetry((value) => value + 1)}>Try again</button>
+        ) : !nextLessonLoading && !data.offerings.length ? (
+          <Link className="button secondary" to="/courses">Find a course <ArrowRight size={15} /></Link>
+        ) : null}
+      </section>
       <div className="dashboard-grid student-grid">
         <section className="panel courses-panel">
           <div className="panel-heading">
@@ -324,7 +377,9 @@ export function StudentDashboard({ data, profile }) {
           ) : (
             <EmptyPanel
               title="Your next chapter is on its way."
-              body="Once a faculty member enrolls you in a course, it will appear here."
+              body="Join a course with an invite code, or ask your faculty member to enroll you."
+              link="/courses"
+              linkText="Join a course"
             />
           )}
         </section>
