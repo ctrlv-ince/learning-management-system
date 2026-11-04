@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   ArrowRight,
@@ -8,11 +8,62 @@ import {
   GraduationCap,
   Sparkles,
   Users,
+  X,
 } from "lucide-react";
 import { api, send } from "../api.js";
 import { useAuth } from "../shared.jsx";
 import { BrandIcon } from "../BrandIcon.jsx";
 import { validateRequiredValues } from "../formValidation.js";
+import { PrivacyPolicyContent } from "./PublicPages.jsx";
+
+function PrivacyPolicyDialog({ onClose }) {
+  const dialogRef = useRef(null);
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    if (dialog && !dialog.open) dialog.showModal();
+    return () => {
+      if (dialog?.open) dialog.close();
+    };
+  }, []);
+  return (
+    <dialog
+      className="privacy-policy-dialog"
+      ref={dialogRef}
+      aria-labelledby="privacy-dialog-title"
+      onClose={onClose}
+    >
+      <header className="privacy-dialog-header">
+        <div>
+          <span className="eyebrow">PRIVACY NOTICE · VERSION 2</span>
+          <h2 id="privacy-dialog-title">Your information, explained.</h2>
+        </div>
+        <button
+          type="button"
+          className="privacy-dialog-close"
+          aria-label="Close privacy policy"
+          onClick={() => dialogRef.current?.close()}
+        >
+          <X size={20} />
+        </button>
+      </header>
+      <div className="privacy-dialog-body">
+        <PrivacyPolicyContent />
+      </div>
+      <footer className="privacy-dialog-footer">
+        <Link to="/privacy" onClick={() => dialogRef.current?.close()}>
+          View full policy page <ArrowUpRight size={14} />
+        </Link>
+        <button
+          type="button"
+          className="button primary"
+          onClick={() => dialogRef.current?.close()}
+        >
+          Close
+        </button>
+      </footer>
+    </dialog>
+  );
+}
 
 export function AuthPage({ register = false }) {
   const { setSession, notify } = useAuth();
@@ -31,6 +82,7 @@ export function AuthPage({ register = false }) {
   const [busy, setBusy] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [privacyPolicyOpen, setPrivacyPolicyOpen] = useState(false);
   useEffect(() => {
     if (register)
       api("/auth/options")
@@ -411,18 +463,23 @@ export function AuthPage({ register = false }) {
             )}
             {register && (
               <fieldset className="privacy-consent">
-                <legend>Your privacy rights</legend>
+                <legend>Privacy notice</legend>
                 <p>
-                  Modulink uses your account details and course activity to
-                  provide classes, coursework, and grades. You may ask your
-                  school about accessing or correcting your personal data and
-                  other rights under applicable privacy rules.
+                  Review what information Modulink uses, who can see it, and how
+                  to make a privacy request.
                 </p>
+                <button
+                  type="button"
+                  className="privacy-policy-open"
+                  onClick={() => setPrivacyPolicyOpen(true)}
+                  aria-haspopup="dialog"
+                >
+                  Read the Privacy Policy <ArrowUpRight size={14} />
+                </button>
                 <label>
                   <input type="checkbox" name="privacyAcknowledged" required />
                   <span>
-                    I have read this notice and agree to the described use of my
-                    information to provide Modulink.
+                    I have read and acknowledge the Modulink Privacy Policy.
                   </span>
                 </label>
               </fieldset>
@@ -449,6 +506,9 @@ export function AuthPage({ register = false }) {
           <span>MADE FOR THE LONG WAY AROUND.</span>
         </div>
       </section>
+      {register && privacyPolicyOpen && (
+        <PrivacyPolicyDialog onClose={() => setPrivacyPolicyOpen(false)} />
+      )}
     </main>
   );
 }

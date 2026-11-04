@@ -6,6 +6,12 @@ import { AuthContext } from "./shared.jsx";
 import { BrandIcon } from "./BrandIcon.jsx";
 import { AuthPage } from "./pages/AuthPage.jsx";
 import { LandingPage } from "./pages/LandingPage.jsx";
+import {
+  FacultyGuidePage,
+  HowItWorksPage,
+  PrivacyPolicyPage,
+  StudentGuidePage,
+} from "./pages/PublicPages.jsx";
 import { FacultyDirectoryPage } from "./pages/Faculty.jsx";
 import { Workspace } from "./layout/Workspace.jsx";
 
@@ -36,6 +42,10 @@ function App() {
         <Route path="/" element={session ? <Workspace /> : <LandingPage />} />
         <Route path="/welcome" element={<LandingPage />} />
         <Route path="/faculty" element={<FacultyDirectoryPage />} />
+        <Route path="/privacy" element={<PrivacyPolicyPage />} />
+        <Route path="/how-it-works" element={<HowItWorksPage />} />
+        <Route path="/student-guide" element={<StudentGuidePage />} />
+        <Route path="/faculty-guide" element={<FacultyGuidePage />} />
         <Route
           path="/login"
           element={session ? <Navigate to="/" replace /> : <AuthPage />}

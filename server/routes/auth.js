@@ -159,7 +159,7 @@ router.post(
         email,
         username,
         privacyAcknowledgement: {
-          version: "1",
+          version: "2",
           acceptedAt: new Date(),
         },
         passwordHash,

@@ -28,6 +28,34 @@ const highlights = [
   },
 ];
 
+const quickLinks = [
+  {
+    to: "/how-it-works",
+    title: "How it works",
+    detail: "See how courses, lessons, and progress connect.",
+  },
+  {
+    to: "/student-guide",
+    title: "Student guide",
+    detail: "Learn how to join a course and move through lessons.",
+  },
+  {
+    to: "/faculty-guide",
+    title: "Faculty guide",
+    detail: "Set up course offerings, materials, and assessments.",
+  },
+  {
+    to: "/faculty",
+    title: "Faculty directory",
+    detail: "Browse faculty members by department.",
+  },
+  {
+    to: "/privacy",
+    title: "Privacy policy",
+    detail: "Understand how Modulink handles account and course data.",
+  },
+];
+
 export function LandingPage() {
   const { session } = useAuth();
   return (
@@ -37,7 +65,7 @@ export function LandingPage() {
           <BrandIcon /> Modulink
         </Link>
         <nav aria-label="Main navigation">
-          <a href="#how-it-works">How it works</a>
+          <Link to="/how-it-works">How it works</Link>
           <Link className="landing-signin" to="/faculty">
             Faculty
           </Link>
@@ -167,6 +195,27 @@ export function LandingPage() {
               <h3>{title}</h3>
               <p>{detail}</p>
             </article>
+          ))}
+        </div>
+      </section>
+
+      <section
+        className="landing-quick-links"
+        aria-labelledby="quick-links-title"
+      >
+        <div className="landing-section-heading">
+          <span className="eyebrow">QUICK LINKS</span>
+          <h2 id="quick-links-title">Find your next step.</h2>
+        </div>
+        <div className="landing-quick-link-grid">
+          {quickLinks.map(({ to, title, detail }) => (
+            <Link className="landing-quick-link" to={to} key={to}>
+              <span>
+                <b>{title}</b>
+                <small>{detail}</small>
+              </span>
+              <ArrowUpRight size={17} />
+            </Link>
           ))}
         </div>
       </section>
