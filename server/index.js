@@ -29,6 +29,7 @@ import { OfficeParser } from "officeparser";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
+app.set("trust proxy", 1);
 const port = Number(process.env.PORT || 4000);
 const origin = process.env.CLIENT_ORIGIN || "http://localhost:5173";
 const cloudinaryConfig = {
