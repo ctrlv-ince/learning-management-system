@@ -81,6 +81,8 @@ export function LessonPage() {
   const [busy, setBusy] = useState(false);
   const [secondsLeft, setSecondsLeft] = useState(null);
   const quizPanelRef = useRef(null);
+  const [timeoutNotice, setTimeoutNotice] = useState(null);
+  const [timeoutRetry, setTimeoutRetry] = useState(0);
   const load = async () => {
     if (!data) setPageLoading(true);
     setPageError("");
@@ -96,12 +98,17 @@ export function LessonPage() {
             `/quizzes/${lessonData.quiz._id}/sessions/current`,
           );
           if (current.session || current.expired) {
+            const existingAttempts = lessonData.attempts || [];
+            const attemptAlreadyLoaded = existingAttempts.some(
+              (attempt) => String(attempt._id) === String(current.attempt?._id),
+            );
             lessonData = {
               ...lessonData,
               ...current,
-              attempts: current.attempt
-                ? [...lessonData.attempts, current.attempt]
-                : lessonData.attempts,
+              attempts:
+                current.attempt && !attemptAlreadyLoaded
+                  ? [...existingAttempts, current.attempt]
+                  : existingAttempts,
             };
           }
         } catch {
@@ -135,6 +142,57 @@ export function LessonPage() {
     const timer = window.setInterval(update, 1000);
     return () => window.clearInterval(timer);
   }, [data?.session?.expiresAt]);
+  useEffect(() => {
+    const sessionId = data?.session?.id;
+    const quizId = data?.quiz?._id;
+    if (secondsLeft !== 0 || !sessionId || !quizId) return undefined;
+
+    let cancelled = false;
+    setTimeoutNotice({
+      kind: "pending",
+      message: "Time expired. Recording this attempt as failed…",
+    });
+    api(`/quizzes/${quizId}/sessions/current`)
+      .then((expired) => {
+        if (cancelled) return;
+        if (!expired.expired || !expired.attempt) {
+          setTimeoutNotice({
+            kind: "error",
+            message: "Time expired, but the server has not confirmed the attempt yet. Retry the check below.",
+          });
+          return;
+        }
+        setData((current) => {
+          const attempts = current?.attempts || [];
+          const alreadyRecorded = attempts.some(
+            (attempt) => String(attempt._id) === String(expired.attempt?._id),
+          );
+          return {
+            ...current,
+            ...expired,
+            attempts:
+              expired.attempt && !alreadyRecorded
+                ? [...attempts, expired.attempt]
+                : attempts,
+          };
+        });
+        setResult({ attempt: expired.attempt });
+        setTimeoutNotice({
+          kind: "recorded",
+          message: "Time expired. This attempt was recorded as failed. You can start another attempt now.",
+        });
+      })
+      .catch((error) => {
+        if (!cancelled)
+          setTimeoutNotice({
+            kind: "error",
+            message: `Time expired, but we could not confirm the result: ${error.message}`,
+          });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [secondsLeft, data?.session?.id, data?.quiz?._id, timeoutRetry]);
   useEffect(() => {
     if (!data?.session) return undefined;
     const frame = window.requestAnimationFrame(() =>
@@ -196,6 +254,10 @@ export function LessonPage() {
         `/quizzes/${data.quiz._id}/sessions`,
         send("POST", {}),
       );
+      setAnswers({});
+      setQuizFormError("");
+      setConfirmQuizSubmission(false);
+      setTimeoutNotice(null);
       setData((current) => ({ ...current, ...active }));
     } catch (error) {
       setQuizStartError(error.message);
@@ -492,6 +554,16 @@ export function LessonPage() {
                       ? `The ${quiz.timeLimitMinutes ?? 10}-minute timer is running. It started when you began this attempt.`
                       : `Time limit: ${quiz.timeLimitMinutes ?? 10} minutes. The timer starts when you click Start quiz.`}
                   </p>
+                  {timeoutNotice && (
+                    <div className={`quiz-timeout-notice ${timeoutNotice.kind}`} role={timeoutNotice.kind === "error" ? "alert" : "status"} aria-live="polite">
+                      <p>{timeoutNotice.message}</p>
+                      {timeoutNotice.kind === "error" && (
+                        <button type="button" className="button secondary" onClick={() => setTimeoutRetry((count) => count + 1)}>
+                          Check timeout again
+                        </button>
+                      )}
+                    </div>
+                  )}
                   {result && (
                     <div
                       className={`quiz-result ${result.attempt.passed ? "passed" : "failed"}`}
@@ -535,7 +607,7 @@ export function LessonPage() {
                   )}
                   {!hasPassedQuiz && !data.session && (
                     <>
-                      {data.expired && (
+                      {data.expired && !timeoutNotice && (
                         <p className="attempt-note">
                           Your previous timer expired. Starting again records it
                           as a failed attempt.
