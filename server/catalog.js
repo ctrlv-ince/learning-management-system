@@ -2,9 +2,9 @@ import { AcademicYear, Program } from "./models/index.js";
 
 export const departments = [
   { code: "EAAD", name: "Electrical and Allied Department" },
-  { code: "CAAD", name: "Civil and Allied" },
-  { code: "BASD", name: "Basic Arts and Sciences" },
-  { code: "MAAD", name: "Mechanical and Allied" },
+  { code: "CAAD", name: "Civil and Allied Department" },
+  { code: "BASD", name: "Basic Arts and Sciences Department" },
+  { code: "MAAD", name: "Mechanical and Allied Department" },
 ];
 
 export const programs = [

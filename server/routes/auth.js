@@ -23,6 +23,10 @@ import {
 } from "../middleware.js";
 import { formatStudentId } from "../logic.js";
 import { departmentNames, departments } from "../catalog.js";
+import {
+  addStudentToOffering,
+  COURSE_ENROLLMENT_LIMIT,
+} from "../enrollment.js";
 
 const router = Router();
 const credentials = z.object({
@@ -146,6 +150,7 @@ router.post(
     }
     const passwordHash = await bcrypt.hash(data.password, 12);
     let user;
+    const fullCourses = [];
     try {
       user = await User.create({
         firstName: data.firstName,
@@ -189,14 +194,20 @@ router.post(
           section: data.section || undefined,
         });
         if (data.section) {
-          const offerings = await Offering.find({ section: data.section });
-          await Offering.updateMany(
-            { section: data.section },
-            { $addToSet: { students: user.id } },
-          );
+          const offerings = await Offering.find({ section: data.section })
+            .populate("course", "code")
+            .lean();
           for (const offering of offerings) {
+            const enrollmentStatus = await addStudentToOffering(
+              offering._id,
+              user.id,
+            );
+            if (enrollmentStatus === "full") {
+              fullCourses.push(offering.course?.code || "Course");
+              continue;
+            }
             const firstLesson = await Lesson.findOne({
-              offering: offering.id,
+              offering: offering._id,
               published: true,
             })
               .sort("sequence")
@@ -205,13 +216,13 @@ router.post(
               await AccessGrant.updateOne(
                 {
                   student: user.id,
-                  offering: offering.id,
+                  offering: offering._id,
                   lesson: firstLesson.id,
                 },
                 {
                   $setOnInsert: {
                     student: user.id,
-                    offering: offering.id,
+                    offering: offering._id,
                     lesson: firstLesson.id,
                   },
                 },
@@ -258,6 +269,12 @@ router.post(
           username,
           role: user.role,
         },
+        ...(fullCourses.length
+          ? {
+              fullCourses,
+              enrollmentLimit: COURSE_ENROLLMENT_LIMIT,
+            }
+          : {}),
       },
       201,
     );

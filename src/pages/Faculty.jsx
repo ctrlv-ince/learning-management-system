@@ -28,6 +28,7 @@ import {
 } from "../shared.jsx";
 
 export function StudentsPage() {
+  const enrollmentLimit = 40;
   const { data, loading, error } = useData("/offerings");
   const { notify } = useAuth();
   const [selected, setSelected] = useState("");
@@ -37,6 +38,7 @@ export function StudentsPage() {
   const [inviteBusy, setInviteBusy] = useState(false);
   const [email, setEmail] = useState("");
   const [removingStudent, setRemovingStudent] = useState("");
+  const courseIsFull = (students?.length || 0) >= enrollmentLimit;
   async function loadOfferingRoster(offeringId = selected) {
     if (!offeringId) return;
     const [roster, pending, invite] = await Promise.all([
@@ -171,12 +173,18 @@ export function StudentsPage() {
                   placeholder="Student email address"
                   required
                 />
-                <button className="button primary">
+                <button className="button primary" disabled={courseIsFull}>
                   <Plus size={15} /> Enroll student
                 </button>
               </form>
             )}
           </div>
+          {selected && students && (
+            <p className={`enrollment-capacity ${courseIsFull ? "full" : ""}`}>
+              {students.length} / {enrollmentLimit} students enrolled
+              {courseIsFull ? " · Course is full" : ""}
+            </p>
+          )}
           {selected && (
             <div className="faculty-join-tools">
               <section className="invite-code-card">
@@ -256,6 +264,7 @@ export function StudentsPage() {
                           <button
                             type="button"
                             className="button primary"
+                            disabled={courseIsFull}
                             onClick={() =>
                               reviewEnrollmentRequest(request.id, "approved")
                             }
@@ -537,15 +546,26 @@ export function GradesPage() {
       )
     : [];
   const quizScoreLookup = new Map();
+  const attemptsByStudentQuiz = new Map();
   for (const attempt of [...(gradeData?.attempts || [])].sort(
-    (a, b) => new Date(b.submittedAt) - new Date(a.submittedAt),
+    (a, b) => new Date(a.submittedAt) - new Date(b.submittedAt),
   )) {
     const studentId = String(attempt.student?._id || attempt.student);
     const quizId = String(attempt.quiz?._id || attempt.quiz);
     const key = `${studentId}:${quizId}`;
-    if (attempt.quiz?._id && !quizScoreLookup.has(key))
-      quizScoreLookup.set(key, attempt);
+    if (!attemptsByStudentQuiz.has(key)) attemptsByStudentQuiz.set(key, []);
+    attemptsByStudentQuiz.get(key).push(attempt);
+    if (attempt.quiz?._id) quizScoreLookup.set(key, attempt);
   }
+  const currentQuizRun = new Map(
+    [...attemptsByStudentQuiz].map(([key, history]) => {
+      const previousPassedIndex = history.findLastIndex(
+        (attempt, index) => attempt.passed && index < history.length - 1,
+      );
+      const run = history.slice(previousPassedIndex + 1);
+      return [key, { count: run.length, passed: run.at(-1)?.passed || false }];
+    }),
+  );
   const orderedQuizSummary = [...orderedCourseGrades].sort((a, b) =>
     reportSort === "score"
       ? (b.quizAverage ?? -1) - (a.quizAverage ?? -1) ||
@@ -597,6 +617,7 @@ export function GradesPage() {
         "Score",
         "Percent",
         "Result",
+        "Attempts in current run",
         "Submitted",
         "Course grade",
       ],
@@ -607,6 +628,9 @@ export function GradesPage() {
         `${attempt.earnedPoints} / ${attempt.totalPoints}`,
         `${attempt.percent ?? 0}%`,
         attempt.passed ? "Passed" : "Needs another try",
+        currentQuizRun.get(
+          `${String(attempt.student?._id || attempt.student)}:${String(attempt.quiz?._id || attempt.quiz)}`,
+        )?.count ?? "",
         new Date(attempt.submittedAt).toLocaleString(),
         gradeByStudent.get(String(attempt.student?._id)) ?? "",
       ]),
@@ -623,6 +647,7 @@ export function GradesPage() {
           "",
           "No attempts",
           "",
+          "",
           item.grade ?? "",
         ]),
     ];
@@ -635,7 +660,10 @@ export function GradesPage() {
       [
         "Surname",
         "First name",
-        ...quizColumns.map((quiz) => `Lesson ${quiz.sequence}: ${quiz.title}`),
+        ...quizColumns.flatMap((quiz) => [
+          `Lesson ${quiz.sequence}: ${quiz.title}`,
+          `Lesson ${quiz.sequence}: attempts in current run`,
+        ]),
         "Quiz average (latest attempt per quiz)",
         "Other coursework average (not included)",
         "Quiz-only course grade",
@@ -643,9 +671,10 @@ export function GradesPage() {
       ...orderedQuizSummary.map((item) => [
         item.student?.lastName || "",
         item.student?.firstName || "",
-        ...quizColumns.map((quiz) => {
+        ...quizColumns.flatMap((quiz) => {
           const attempt = quizScoreLookup.get(`${item.studentId}:${quiz.id}`);
-          return attempt ? `${attempt.percent ?? 0}%` : "";
+          const run = currentQuizRun.get(`${item.studentId}:${quiz.id}`);
+          return [attempt ? `${attempt.percent ?? 0}%` : "", run?.count ?? ""];
         }),
         item.quizAverage == null ? "" : `${item.quizAverage}%`,
         item.otherAverage == null ? "" : `${item.otherAverage}%`,
@@ -785,9 +814,19 @@ export function GradesPage() {
                               const attempt = quizScoreLookup.get(
                                 `${item.studentId}:${quiz.id}`,
                               );
+                              const run = currentQuizRun.get(
+                                `${item.studentId}:${quiz.id}`,
+                              );
                               return (
                                 <td key={quiz.id}>
                                   {attempt ? `${attempt.percent ?? 0}%` : "—"}
+                                  {run && (
+                                    <small className="grade-attempt-count">
+                                      {run.passed
+                                        ? `Passed in ${run.count} attempt${run.count === 1 ? "" : "s"}`
+                                        : `${run.count} attempt${run.count === 1 ? "" : "s"} so far`}
+                                    </small>
+                                  )}
                                 </td>
                               );
                             })}

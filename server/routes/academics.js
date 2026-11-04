@@ -41,6 +41,10 @@ import {
   shuffle,
 } from "../logic.js";
 import { departmentCode, departments } from "../catalog.js";
+import {
+  addStudentToOffering,
+  COURSE_ENROLLMENT_LIMIT,
+} from "../enrollment.js";
 
 const router = Router();
 const id = z.string().regex(/^[a-f\d]{24}$/i);
@@ -262,6 +266,12 @@ router.post(
       )
     )
       return fail(res, 409, "You are already enrolled in this course.");
+    if (offering.students.length >= COURSE_ENROLLMENT_LIMIT)
+      return fail(
+        res,
+        409,
+        `This course is full. It can have up to ${COURSE_ENROLLMENT_LIMIT} students.`,
+      );
     const eligibilityError = await studentOfferingEligibility(
       req.user.id,
       offering,
@@ -334,18 +344,8 @@ async function reserveAttemptNumber({ studentId, quiz, lesson, resetAt }) {
         continue;
       }
     }
-    const current = counter.base + counter.sequence;
-    if (current >= quiz.attemptsAllowed) return null;
     const reserved = await Counter.findOneAndUpdate(
-      {
-        _id: counter._id,
-        $expr: {
-          $lt: [
-            { $add: [{ $ifNull: ["$base", 0] }, "$sequence"] },
-            quiz.attemptsAllowed,
-          ],
-        },
-      },
+      { _id: counter._id },
       { $inc: { sequence: 1 } },
       { new: true },
     );
@@ -857,6 +857,15 @@ router.post(
       section.program.department !== departmentCode(facultyProfile.department)
     )
       return fail(res, 403, "That section is unavailable to your account.");
+    const enrolledStudents = await StudentProfile.find({
+      section: section.id,
+    }).distinct("user");
+    if (enrolledStudents.length > COURSE_ENROLLMENT_LIMIT)
+      return fail(
+        res,
+        409,
+        `This section has more than ${COURSE_ENROLLMENT_LIMIT} students. Reduce the section roster before creating this course offering.`,
+      );
     const code = parsed.data.code.toUpperCase();
     let course = await Course.findOne({ code });
     if (!course)
@@ -882,9 +891,6 @@ router.post(
         409,
         "This course already has an offering for that section and semester.",
       );
-    const enrolledStudents = await StudentProfile.find({
-      section: section.id,
-    }).distinct("user");
     const offering = await Offering.create({
       course: course.id,
       academicYear: academicYear.id,
@@ -930,10 +936,16 @@ router.post(
         403,
         "Students can only enroll in courses within their department.",
       );
-    await Offering.updateOne(
-      { _id: offering.id },
-      { $addToSet: { students: student.id } },
+    const enrollmentStatus = await addStudentToOffering(
+      offering.id,
+      student.id,
     );
+    if (enrollmentStatus === "full")
+      return fail(
+        res,
+        409,
+        `This course is full. It can have up to ${COURSE_ENROLLMENT_LIMIT} students.`,
+      );
     await seedFirstLesson(offering.id, [student.id]);
     return success(res, { message: "Student enrolled." }, 201);
   }),
@@ -1097,11 +1109,26 @@ router.patch(
     if (!reviewed) return fail(res, 409, "This request was already reviewed.");
     if (body.data.status === "approved") {
       try {
-        await Offering.updateOne(
-          { _id: offering.id },
-          { $addToSet: { students: studentId } },
+        const enrollmentStatus = await addStudentToOffering(
+          offering.id,
+          studentId,
         );
-        await seedFirstLesson(offering.id, [studentId]);
+        if (enrollmentStatus === "full") {
+          await EnrollmentRequest.updateOne(
+            { _id: reviewed.id, status: "approved", reviewedBy: req.user.id },
+            {
+              $set: { status: "pending" },
+              $unset: { reviewedAt: "", reviewedBy: "" },
+            },
+          );
+          return fail(
+            res,
+            409,
+            `This course is full. It can have up to ${COURSE_ENROLLMENT_LIMIT} students.`,
+          );
+        }
+        if (enrollmentStatus === "enrolled")
+          await seedFirstLesson(offering.id, [studentId]);
       } catch (error) {
         await EnrollmentRequest.updateOne(
           { _id: reviewed.id, status: "approved", reviewedBy: req.user.id },
@@ -1537,7 +1564,7 @@ router.put(
     const parsed = isValid(
       z.object({
         passingPercent: z.number().min(0).max(100),
-        attemptsAllowed: z.number().int().min(1).max(20),
+        attemptsAllowed: z.literal(1).default(1),
         timeLimitMinutes: z.literal(10).default(10),
         availableFrom: z.coerce.date().optional(),
         deadline: z.coerce.date().optional(),
@@ -1621,7 +1648,7 @@ router.get(
       session: {
         id: active.id,
         attemptNumber: active.attemptNumber,
-        attemptsAllowed: quiz.attemptsAllowed,
+        attemptsAllowed: 1,
         startedAt: active.startedAt,
         expiresAt,
       },
@@ -1669,7 +1696,7 @@ router.post(
         session: {
           id: session.id,
           attemptNumber: session.attemptNumber,
-          attemptsAllowed: quiz.attemptsAllowed,
+          attemptsAllowed: 1,
           startedAt: session.startedAt,
           expiresAt: quizExpiresAt(session.startedAt, timeLimitMinutes),
         },
@@ -1738,7 +1765,7 @@ router.post(
         session: {
           id: session.id,
           attemptNumber: session.attemptNumber,
-          attemptsAllowed: quiz.attemptsAllowed,
+          attemptsAllowed: 1,
           startedAt: session.startedAt,
           expiresAt: quizExpiresAt(session.startedAt, timeLimitMinutes),
         },
@@ -1764,7 +1791,7 @@ router.post(
         session: {
           id: session.id,
           attemptNumber,
-          attemptsAllowed: quiz.attemptsAllowed,
+          attemptsAllowed: 1,
           startedAt: session.startedAt,
           expiresAt: quizExpiresAt(session.startedAt, timeLimitMinutes),
         },
@@ -1876,7 +1903,7 @@ router.post(
           passed,
           timedOut,
           attemptNumber: session.attemptNumber,
-          attemptsAllowed: quiz.attemptsAllowed,
+          attemptsAllowed: 1,
         },
         results,
         message: timedOut

@@ -40,8 +40,7 @@ export function LessonPage() {
       if (
         !faculty &&
         lessonData.quiz &&
-        !lessonData.attempts.some((attempt) => attempt.passed) &&
-        lessonData.attempts.length < lessonData.quiz.attemptsAllowed
+        !lessonData.attempts.some((attempt) => attempt.passed)
       ) {
         try {
           const current = await api(
@@ -139,7 +138,11 @@ export function LessonPage() {
     setBusy(true);
     try {
       await api(`/lessons/${lessonId}`, send("PATCH", { published: publish }));
-      notify(publish ? "Lesson published to students." : "Lesson moved back to draft.");
+      notify(
+        publish
+          ? "Lesson published to students."
+          : "Lesson moved back to draft.",
+      );
       await load();
     } catch (error) {
       notify(error.message);
@@ -154,7 +157,10 @@ export function LessonPage() {
         <section className="panel lesson-load-error" role="alert">
           <span className="eyebrow">LESSON UNAVAILABLE</span>
           <h1>We couldn’t open this lesson.</h1>
-          <p>{pageError || "This lesson may be locked, unpublished, or no longer available."}</p>
+          <p>
+            {pageError ||
+              "This lesson may be locked, unpublished, or no longer available."}
+          </p>
           <Link className="button secondary" to="/courses">
             Back to my courses
           </Link>
@@ -165,17 +171,14 @@ export function LessonPage() {
   const emptyQuiz = {
     questions: [],
     passingPercent: 75,
-    attemptsAllowed: 3,
+    attemptsAllowed: 1,
     timeLimitMinutes: 10,
     randomizeQuestions: true,
     randomizeChoices: true,
     published: false,
   };
-  const hasPassedQuiz = data.attempts?.some((attempt) => attempt.passed) || false;
-  const attemptsRemaining = Math.max(
-    0,
-    (quiz?.attemptsAllowed ?? 0) - (data.attempts?.length ?? 0),
-  );
+  const hasPassedQuiz =
+    data.attempts?.some((attempt) => attempt.passed) || false;
   return (
     <div className="page-shell">
       <Link to={`/courses/${lesson.offering}`} className="back-link">
@@ -277,7 +280,8 @@ export function LessonPage() {
                 <span>
                   <b>{file.name}</b>
                   <small>
-                    {(file.size / 1024 / 1024).toFixed(1)} MB · Learning material
+                    {(file.size / 1024 / 1024).toFixed(1)} MB · Learning
+                    material
                   </small>
                 </span>
                 <ArrowUpRight size={15} />
@@ -290,17 +294,33 @@ export function LessonPage() {
             <>
               <section className="panel lesson-publication">
                 <span className="eyebrow">
-                  {lesson.published ? "PUBLISHED TO STUDENTS" : "DRAFT · HIDDEN FROM STUDENTS"}
+                  {lesson.published
+                    ? "PUBLISHED TO STUDENTS"
+                    : "DRAFT · HIDDEN FROM STUDENTS"}
                 </span>
-                <h3>{lesson.published ? "Lesson is live" : "Lesson is not published"}</h3>
+                <h3>
+                  {lesson.published
+                    ? "Lesson is live"
+                    : "Lesson is not published"}
+                </h3>
                 {!lesson.published && !quiz?.published && (
-                  <p>Publish the assessment first. Students must pass it to unlock the next lesson.</p>
+                  <p>
+                    Publish the assessment first. Students must pass it to
+                    unlock the next lesson.
+                  </p>
                 )}
                 {lesson.published && (
-                  <p>Students can view this lesson and must pass its quiz to continue.</p>
+                  <p>
+                    Students can view this lesson and must pass its quiz to
+                    continue.
+                  </p>
                 )}
                 <button
-                  className={lesson.published ? "button secondary full-width" : "button primary full-width"}
+                  className={
+                    lesson.published
+                      ? "button secondary full-width"
+                      : "button primary full-width"
+                  }
                   type="button"
                   disabled={busy || (!lesson.published && !quiz?.published)}
                   onClick={toggleLessonPublication}
@@ -398,8 +418,7 @@ export function LessonPage() {
                       <small>
                         {result.attempt.earnedPoints} /{" "}
                         {result.attempt.totalPoints} points · attempt{" "}
-                        {result.attempt.attemptNumber} of{" "}
-                        {result.attempt.attemptsAllowed}
+                        {result.attempt.attemptNumber}
                       </small>
                     </div>
                   )}
@@ -407,16 +426,21 @@ export function LessonPage() {
                     <p className="attempt-note">
                       {data.attempts.filter((item) => item.passed).length
                         ? "You’ve already passed this assessment."
-                        : `${quiz.attemptsAllowed - data.attempts.length} attempt${quiz.attemptsAllowed - data.attempts.length === 1 ? "" : "s"} remaining.`}
+                        : "You can retry after a failed attempt until you pass."}
                     </p>
                   )}
                   {quizStartError && (
-                    <p className="upload-error" role="alert">{quizStartError}</p>
+                    <p className="upload-error" role="alert">
+                      {quizStartError}
+                    </p>
                   )}
-                  {!hasPassedQuiz && !data.session && attemptsRemaining > 0 && (
+                  {!hasPassedQuiz && !data.session && (
                     <>
                       {data.expired && (
-                        <p className="attempt-note">Your previous timer expired. Starting again records it as a failed attempt.</p>
+                        <p className="attempt-note">
+                          Your previous timer expired. Starting again records it
+                          as a failed attempt.
+                        </p>
                       )}
                       <button
                         className="button primary full-width"
@@ -432,12 +456,6 @@ export function LessonPage() {
                         <ArrowRight size={15} />
                       </button>
                     </>
-                  )}
-                  {!hasPassedQuiz && attemptsRemaining === 0 && (
-                    <div className="attempt-exhausted" role="status">
-                      <strong>No attempts remaining.</strong>
-                      <p>You can’t unlock the next lesson until you pass. Ask your instructor to reset this assessment from the gradebook.</p>
-                    </div>
                   )}
                   {!data.attempts?.some((item) => item.passed) &&
                     data.session && (
@@ -625,7 +643,11 @@ function PresentationViewer({ file }) {
           >
             {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
             <span>
-              {isFullscreen ? "Exit full screen" : expanded ? "Collapse" : "Expand"}
+              {isFullscreen
+                ? "Exit full screen"
+                : expanded
+                  ? "Collapse"
+                  : "Expand"}
             </span>
           </button>
         </div>
@@ -645,8 +667,9 @@ function PresentationViewer({ file }) {
 function QuizImport({ lessonId, quiz, materials = [], onSaved }) {
   const { notify } = useAuth();
   const [busy, setBusy] = useState(false);
-  const [passingPercent, setPassingPercent] = useState(quiz?.passingPercent ?? 75);
-  const [attemptsAllowed, setAttemptsAllowed] = useState(quiz?.attemptsAllowed ?? 3);
+  const [passingPercent, setPassingPercent] = useState(
+    quiz?.passingPercent ?? 75,
+  );
   const [publishQuiz, setPublishQuiz] = useState(quiz?.published ?? true);
   const [progress, setProgress] = useState(null);
   const [uploadError, setUploadError] = useState("");
@@ -655,14 +678,13 @@ function QuizImport({ lessonId, quiz, materials = [], onSaved }) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [selectedPresentation, setSelectedPresentation] = useState("");
   const settingsForm = useRef(null);
-  const presentations = materials.filter(
-    (file) => file.name?.toLowerCase().endsWith(".pptx"),
+  const presentations = materials.filter((file) =>
+    file.name?.toLowerCase().endsWith(".pptx"),
   );
   useEffect(() => {
     setPassingPercent(quiz?.passingPercent ?? 75);
-    setAttemptsAllowed(quiz?.attemptsAllowed ?? 3);
     setPublishQuiz(quiz?.published ?? true);
-  }, [quiz?.passingPercent, quiz?.attemptsAllowed, quiz?.published]);
+  }, [quiz?.passingPercent, quiz?.published]);
   useEffect(() => {
     if (!presentations.some((file) => file.url === selectedPresentation))
       setSelectedPresentation(presentations[0]?.url || "");
@@ -727,7 +749,9 @@ function QuizImport({ lessonId, quiz, materials = [], onSaved }) {
         })),
       );
       setQuestionSource("presentation");
-      notify(`${response.questions.length} quiz questions drafted. Review and confirm every answer.`);
+      notify(
+        `${response.questions.length} quiz questions drafted. Review and confirm every answer.`,
+      );
     } catch (error) {
       setUploadError(error.message);
       notify(error.message);
@@ -746,6 +770,13 @@ function QuizImport({ lessonId, quiz, materials = [], onSaved }) {
   }
   async function saveReviewedQuiz() {
     if (!validateRequiredValues(settingsForm.current)) return;
+    if (
+      questionSource === "presentation" &&
+      (questions.length < 10 || questions.length > 20)
+    ) {
+      notify("AI generated quizzes must contain between 10 and 20 questions.");
+      return;
+    }
     if (!questions.length || questions.some((question) => !question.confirmed))
       return notify(
         "Confirm the correct answer for every question before saving.",
@@ -756,7 +787,7 @@ function QuizImport({ lessonId, quiz, materials = [], onSaved }) {
         `/lessons/${lessonId}/quiz`,
         send("PUT", {
           passingPercent: Number(passingPercent),
-          attemptsAllowed: Number(attemptsAllowed),
+          attemptsAllowed: 1,
           timeLimitMinutes: 10,
           availableFrom: quiz?.availableFrom,
           deadline: quiz?.deadline,
@@ -766,7 +797,11 @@ function QuizImport({ lessonId, quiz, materials = [], onSaved }) {
           questions: questions.map(({ confirmed, ...question }) => question),
         }),
       );
-      notify(publishQuiz ? "Reviewed quiz published." : "Reviewed quiz saved as a draft.");
+      notify(
+        publishQuiz
+          ? "Reviewed quiz published."
+          : "Reviewed quiz saved as a draft.",
+      );
       setQuestions([]);
       await onSaved();
     } catch (error) {
@@ -786,13 +821,25 @@ function QuizImport({ lessonId, quiz, materials = [], onSaved }) {
         {busy && progress !== null && (
           <div className="upload-progress" role="status" aria-live="polite">
             <div className="upload-progress-label">
-              <span>{progress >= 100 ? "Upload complete; extracting questions…" : "Uploading quiz document…"}</span>
+              <span>
+                {progress >= 100
+                  ? "Upload complete; extracting questions…"
+                  : "Uploading quiz document…"}
+              </span>
               <span>{progress}%</span>
             </div>
-            <progress max="100" value={progress} aria-label="Quiz upload progress" />
+            <progress
+              max="100"
+              value={progress}
+              aria-label="Quiz upload progress"
+            />
           </div>
         )}
-        {uploadError && <p className="upload-error" role="alert">{uploadError}</p>}
+        {uploadError && (
+          <p className="upload-error" role="alert">
+            {uploadError}
+          </p>
+        )}
         <label>
           Quiz document{" "}
           <span className="optional">TXT, PDF, DOCX OR PPTX · 5 MB MAX</span>
@@ -809,7 +856,9 @@ function QuizImport({ lessonId, quiz, materials = [], onSaved }) {
           {selectedFile && (
             <span className="selected-upload-file">
               <b>{selectedFile.name}</b>
-              <small>{formatUploadSize(selectedFile.size)} · ready to upload</small>
+              <small>
+                {formatUploadSize(selectedFile.size)} · ready to upload
+              </small>
             </span>
           )}
         </label>
@@ -829,7 +878,9 @@ function QuizImport({ lessonId, quiz, materials = [], onSaved }) {
               Presentation
               <select
                 value={selectedPresentation}
-                onChange={(event) => setSelectedPresentation(event.target.value)}
+                onChange={(event) =>
+                  setSelectedPresentation(event.target.value)
+                }
               >
                 {presentations.map((file) => (
                   <option value={file.url} key={file.url}>
@@ -848,7 +899,9 @@ function QuizImport({ lessonId, quiz, materials = [], onSaved }) {
             </button>
           </>
         ) : (
-          <small>Upload a PowerPoint in this lesson to enable quiz generation.</small>
+          <small>
+            Upload a PowerPoint in this lesson to enable quiz generation.
+          </small>
         )}
       </section>
       <form
@@ -869,19 +922,11 @@ function QuizImport({ lessonId, quiz, materials = [], onSaved }) {
               onChange={(event) => setPassingPercent(event.target.value)}
             />
           </label>
-          <label>
-            Attempts allowed
-            <input
-              type="number"
-              min="1"
-              max="20"
-              required
-              value={attemptsAllowed}
-              onChange={(event) => setAttemptsAllowed(event.target.value)}
-            />
-          </label>
         </div>
-        <p>Time limit is 10 minutes. It starts when a student clicks Start quiz.</p>
+        <p>
+          Students can retry failed quizzes until they pass. Each attempt allows
+          one submission. The 10-minute timer starts when they click Start quiz.
+        </p>
         <label className="publish-check">
           <input
             type="checkbox"
@@ -922,7 +967,8 @@ Answer: A`}</pre>
         >
           <h3>
             Review {questions.length}{" "}
-            {questionSource === "presentation" ? "generated" : "extracted"} questions
+            {questionSource === "presentation" ? "generated" : "extracted"}{" "}
+            questions
           </h3>
           <p className="muted">
             {questionSource === "presentation"
@@ -1003,7 +1049,11 @@ Answer: A`}</pre>
             className="button primary full-width"
             disabled={busy || questions.some((question) => !question.confirmed)}
           >
-            {busy ? "Saving…" : publishQuiz ? "Save and publish quiz" : "Save quiz as draft"}
+            {busy
+              ? "Saving…"
+              : publishQuiz
+                ? "Save and publish quiz"
+                : "Save quiz as draft"}
           </button>
         </form>
       )}
@@ -1046,11 +1096,14 @@ export function QuizEditor({ lessonId, quiz, onSaved }) {
     const invalidChoices = questions.find(
       (question) =>
         question.type === "multiple-choice" &&
-        (question.choices.length < 2 || !question.choices.includes(question.answer)),
+        (question.choices.length < 2 ||
+          !question.choices.includes(question.answer)),
     );
     if (invalidChoices) {
       setBusy(false);
-      notify("Each multiple-choice question needs at least two choices, and the correct answer must match one of them.");
+      notify(
+        "Each multiple-choice question needs at least two choices, and the correct answer must match one of them.",
+      );
       return;
     }
     try {
@@ -1058,7 +1111,7 @@ export function QuizEditor({ lessonId, quiz, onSaved }) {
         `/lessons/${lessonId}/quiz`,
         send("PUT", {
           passingPercent: Number(values.passingPercent),
-          attemptsAllowed: Number(values.attemptsAllowed),
+          attemptsAllowed: 1,
           ...(values.timeLimitMinutes
             ? { timeLimitMinutes: Number(values.timeLimitMinutes) }
             : {}),
@@ -1183,17 +1236,6 @@ export function QuizEditor({ lessonId, quiz, onSaved }) {
             defaultValue={quiz.passingPercent || 75}
           />
         </label>
-        <label>
-          Attempts
-          <input
-            name="attemptsAllowed"
-            type="number"
-            min="1"
-            max="20"
-            required
-            defaultValue={quiz.attemptsAllowed || 3}
-          />
-        </label>
       </div>
       <label>
         Time limit (minutes)
@@ -1206,7 +1248,10 @@ export function QuizEditor({ lessonId, quiz, onSaved }) {
           required
           readOnly
         />
-        <small>Fixed at 10 minutes. The timer starts when the student clicks Start quiz.</small>
+        <small>
+          Fixed at 10 minutes. The timer starts when the student clicks Start
+          quiz.
+        </small>
       </label>
       <div className="field-row">
         <label>
@@ -1296,7 +1341,9 @@ export function UploadMaterials({ lessonId, materials = [], onUploaded }) {
   async function applyDraft() {
     if (!draft) return;
     if (String(draft.title || "").trim().length < 2) {
-      notify("Add a lesson title with at least 2 characters before applying the draft.");
+      notify(
+        "Add a lesson title with at least 2 characters before applying the draft.",
+      );
       return;
     }
     setBusy(true);
@@ -1312,14 +1359,17 @@ export function UploadMaterials({ lessonId, materials = [], onUploaded }) {
       setBusy(false);
     }
   }
-  const presentations = materials.filter(
-    (file) => file.name?.toLowerCase().endsWith(".pptx"),
+  const presentations = materials.filter((file) =>
+    file.name?.toLowerCase().endsWith(".pptx"),
   );
   return (
     <form className="panel upload-panel" onSubmit={upload}>
       <span className="eyebrow">SHARE A RESOURCE</span>
       <h3>Upload a presentation</h3>
-      <p className="upload-help">Add a PowerPoint to this lesson so students can view it here without downloading.</p>
+      <p className="upload-help">
+        Add a PowerPoint to this lesson so students can view it here without
+        downloading.
+      </p>
       <label className="file-picker">
         <FileText size={17} />
         <span>
@@ -1351,17 +1401,32 @@ export function UploadMaterials({ lessonId, materials = [], onUploaded }) {
       {busy && progress !== null && (
         <div className="upload-progress" role="status" aria-live="polite">
           <div className="upload-progress-label">
-            <span>{progress >= 100 ? "Upload complete; saving to lesson…" : "Uploading lesson materials…"}</span>
+            <span>
+              {progress >= 100
+                ? "Upload complete; saving to lesson…"
+                : "Uploading lesson materials…"}
+            </span>
             <span>{progress}%</span>
           </div>
-          <progress max="100" value={progress} aria-label="Lesson material upload progress" />
+          <progress
+            max="100"
+            value={progress}
+            aria-label="Lesson material upload progress"
+          />
         </div>
       )}
-      {uploadError && <p className="upload-error" role="alert">{uploadError}</p>}
+      {uploadError && (
+        <p className="upload-error" role="alert">
+          {uploadError}
+        </p>
+      )}
       {presentations.length > 0 && (
         <div className="ai-summary-tools">
           <span className="eyebrow">OPTIONAL AI DRAFT</span>
-          <p>Draft editable lesson fields from a deck. Extracted slide text is sent to Groq.</p>
+          <p>
+            Draft editable lesson fields from a deck. Extracted slide text is
+            sent to Groq.
+          </p>
           {presentations.map((file) => (
             <button
               className="button secondary full-width"
@@ -1370,17 +1435,59 @@ export function UploadMaterials({ lessonId, materials = [], onUploaded }) {
               disabled={Boolean(summaryBusy) || busy}
               onClick={() => generateSummary(file)}
             >
-              {summaryBusy === file.url ? "Reading presentation…" : `Draft lesson from ${file.name}`}
+              {summaryBusy === file.url
+                ? "Reading presentation…"
+                : `Draft lesson from ${file.name}`}
             </button>
           ))}
           {draft && (
             <div className="ai-draft-fields">
               <p>Review the draft. Applying it replaces these lesson fields.</p>
-              <label>Lesson title<input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} /></label>
-              <label>Short description<textarea rows="2" value={draft.description} onChange={(event) => setDraft({ ...draft, description: event.target.value })} /></label>
-              <label>Lesson content<textarea rows="6" value={draft.content} onChange={(event) => setDraft({ ...draft, content: event.target.value })} /></label>
-              <label>Lesson summary<textarea rows="4" value={draft.summary} onChange={(event) => setDraft({ ...draft, summary: event.target.value })} /></label>
-              <button className="button primary full-width" type="button" disabled={busy} onClick={applyDraft}>
+              <label>
+                Lesson title
+                <input
+                  value={draft.title}
+                  onChange={(event) =>
+                    setDraft({ ...draft, title: event.target.value })
+                  }
+                />
+              </label>
+              <label>
+                Short description
+                <textarea
+                  rows="2"
+                  value={draft.description}
+                  onChange={(event) =>
+                    setDraft({ ...draft, description: event.target.value })
+                  }
+                />
+              </label>
+              <label>
+                Lesson content
+                <textarea
+                  rows="6"
+                  value={draft.content}
+                  onChange={(event) =>
+                    setDraft({ ...draft, content: event.target.value })
+                  }
+                />
+              </label>
+              <label>
+                Lesson summary
+                <textarea
+                  rows="4"
+                  value={draft.summary}
+                  onChange={(event) =>
+                    setDraft({ ...draft, summary: event.target.value })
+                  }
+                />
+              </label>
+              <button
+                className="button primary full-width"
+                type="button"
+                disabled={busy}
+                onClick={applyDraft}
+              >
                 {busy ? "Applying…" : "Apply draft to lesson"}
               </button>
             </div>

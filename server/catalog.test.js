@@ -8,9 +8,9 @@ test("the academic catalog contains the four approved departments", () => {
     departments.map((department) => department.name),
     [
       "Electrical and Allied Department",
-      "Civil and Allied",
-      "Basic Arts and Sciences",
-      "Mechanical and Allied",
+      "Civil and Allied Department",
+      "Basic Arts and Sciences Department",
+      "Mechanical and Allied Department",
     ],
   );
 });
@@ -30,6 +30,6 @@ test("all eight approved programs belong to the requested departments", () => {
     ],
   );
   assert.ok(programs.every((program) => program.yearLevels.length > 0));
-  assert.equal(departmentCode("Mechanical and Allied"), "MAAD");
+  assert.equal(departmentCode("Mechanical and Allied Department"), "MAAD");
   assert.equal(formatStudentId(2026, "BTVTED-ET", 12), "2026-BTVTED-ET-0012");
 });

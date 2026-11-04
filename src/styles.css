@@ -2221,6 +2221,15 @@ button:focus-visible {
 .enroll-form .button {
   white-space: nowrap;
 }
+.enrollment-capacity {
+  margin: 12px 0;
+  color: #657268;
+  font-size: 13px;
+  font-weight: 600;
+}
+.enrollment-capacity.full {
+  color: #9c514c;
+}
 .remove-enrollment-button {
   display: inline-flex;
   align-items: center;
@@ -2342,6 +2351,14 @@ td small {
   max-width: 190px;
   white-space: normal;
   line-height: 1.4;
+}
+.grade-attempt-count {
+  display: block;
+  margin-top: 3px;
+  color: #737b73;
+  font-size: 11px;
+  line-height: 1.35;
+  white-space: nowrap;
 }
 .lesson-summary {
   margin: 20px 0;

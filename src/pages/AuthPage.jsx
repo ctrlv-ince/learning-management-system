@@ -78,9 +78,11 @@ export function AuthPage({ register = false }) {
       );
       setSession(await api("/auth/me"));
       notify(
-        register
-          ? "Your learning space is ready."
-          : `Welcome back, ${result.user.firstName}.`,
+        register && result.fullCourses?.length
+          ? `Account created. ${result.fullCourses.join(", ")} reached the ${result.enrollmentLimit}-student limit, so you were not enrolled in ${result.fullCourses.length === 1 ? "that course" : "those courses"}. Ask faculty about joining.`
+          : register
+            ? "Your learning space is ready."
+            : `Welcome back, ${result.user.firstName}.`,
       );
       navigate("/");
     } catch (error) {
