@@ -33,7 +33,9 @@ Requirements: Node.js 20 or newer and a reachable MongoDB database.
 
 Authentication lives under `/api/auth`. Academic and coursework endpoints live under `/api`: `/dashboard`, `/programs`, `/academic-years`, `/sections`, `/offerings`, `/lessons`, `/quizzes`, and `/students`. The API uses a consistent `{ success, data, error }` response envelope.
 
-The session is an HTTP-only, same-site cookie. Set the exact frontend origin in `CLIENT_ORIGIN`. Production deployments must use HTTPS and a persistent MongoDB database. Uploaded files require an authenticated session and authorization through the associated lesson's course offering.
+The session is an HTTP-only, same-site cookie. Set the exact frontend origin in `CLIENT_ORIGIN`. Production deployments must use HTTPS and a persistent MongoDB database. Normal uploaded-file routes require an authenticated session and authorization through the associated lesson's course offering.
+
+For demo presentations, the **Microsoft viewer** option uses `/office-preview-files/:filename`, an anonymous read-only URL so Microsoft's viewer can fetch the PPTX. Anyone with that UUID URL can retrieve the file. The in-app local preview remains available from the viewer controls.
 
 Faculty can add a PowerPoint from a lesson page using the **Upload a presentation** panel. After upload, **Draft lesson from…** can extract slide text and ask Groq to prepare editable lesson fields. In assessment settings, **Generate quiz from presentation** creates multiple-choice questions in Modulink's quiz format. Faculty review and confirm every answer before saving or publishing either AI-generated content. Extracted presentation text is sent to Groq for processing; slide images and speaker notes are not included.
 

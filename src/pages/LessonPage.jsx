@@ -4,6 +4,8 @@ import {
   ArrowRight,
   ArrowUpRight,
   BookOpen,
+  ChevronLeft,
+  ChevronRight,
   CircleHelp,
   Clock3,
   FileText,
@@ -13,6 +15,7 @@ import {
 } from "lucide-react";
 import { api, apiUpload, send } from "../api.js";
 import { validateRequiredValues } from "../formValidation.js";
+import { normalizePresentationNamespacePrefixes } from "../presentationCompatibility.js";
 import { useAuth, Loading } from "../shared.jsx";
 
 function formatUploadSize(bytes) {
@@ -263,7 +266,6 @@ export function LessonPage() {
                 "application/vnd.openxmlformats-officedocument.presentationml.presentation" ||
               file.name?.toLowerCase().endsWith(".pptx");
             if (isPresentation) {
-              const filename = file.url.split("/").pop();
               return <PresentationViewer file={file} key={file.url} />;
             }
             return (
@@ -553,7 +555,126 @@ function PresentationViewer({ file }) {
   const viewerRef = useRef(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const officeViewerSupported =
+    typeof window !== "undefined" &&
+    window.location.protocol === "https:" &&
+    !["localhost", "127.0.0.1"].includes(window.location.hostname);
+  const [viewMode, setViewMode] = useState(() =>
+    officeViewerSupported ? "office" : "local",
+  );
+  const [presentation, setPresentation] = useState(null);
+  const [fallbackPreview, setFallbackPreview] = useState(false);
+  const [slideUrl, setSlideUrl] = useState("");
+  const [slideIndex, setSlideIndex] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const filename = file.url.split("/").pop();
+  const sourceUrl = new URL(
+    `/office-preview-files/${encodeURIComponent(filename)}`,
+    window.location.origin,
+  ).href;
+  const officeViewerUrl = `https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(sourceUrl)}`;
+
+  useEffect(() => {
+    if (viewMode === "office") {
+      setPresentation(null);
+      setSlideUrl("");
+      setError("");
+      setLoading(false);
+      return undefined;
+    }
+    let cancelled = false;
+    let fileLoaded = false;
+    let parsedDeck;
+    setLoading(true);
+    setError("");
+    setPresentation(null);
+    setFallbackPreview(false);
+    setSlideUrl("");
+    setSlideIndex(0);
+
+    async function loadPresentation() {
+      try {
+        const [renderer, response] = await Promise.all([
+          import("@web-ppt/core"),
+          fetch(`/uploads/${encodeURIComponent(filename)}`, {
+            credentials: "same-origin",
+          }),
+        ]);
+        if (!response.ok) {
+          const accessError = new Error(
+            response.status === 401 || response.status === 403
+              ? "Sign in with an account that can access this course to view the presentation."
+              : "The presentation could not be loaded. Try downloading the original file.",
+          );
+          accessError.status = response.status;
+          throw accessError;
+        }
+        const bytes = await response.arrayBuffer();
+        fileLoaded = true;
+        const compatibleBytes = normalizePresentationNamespacePrefixes(
+          new Uint8Array(bytes),
+        );
+        parsedDeck = await renderer.parse(compatibleBytes, { lazy: true });
+        if (cancelled) {
+          parsedDeck.dispose?.();
+          return;
+        }
+        if (!parsedDeck.slides.length) {
+          parsedDeck.dispose?.();
+          parsedDeck = undefined;
+          setFallbackPreview(true);
+          setLoading(false);
+          return;
+        }
+        setPresentation({
+          deck: parsedDeck,
+          renderSlideToSvg: renderer.renderSlideToSvg,
+        });
+        setLoading(false);
+      } catch (loadError) {
+        if (cancelled) return;
+        if (loadError.status === 401 || loadError.status === 403) {
+          setError(loadError.message);
+        } else if (fileLoaded) {
+          setFallbackPreview(true);
+        } else {
+          setError(
+            loadError.message || "The presentation could not be previewed.",
+          );
+        }
+        setLoading(false);
+      }
+    }
+
+    loadPresentation();
+    return () => {
+      cancelled = true;
+      parsedDeck?.dispose?.();
+    };
+  }, [filename, viewMode]);
+
+  useEffect(() => {
+    if (!presentation) return undefined;
+    let objectUrl;
+    try {
+      const slide = presentation.deck.slides[slideIndex];
+      if (!slide) throw new Error("This presentation has no readable slides.");
+      const svg = presentation.renderSlideToSvg(presentation.deck, slide);
+      objectUrl = URL.createObjectURL(
+        new Blob([svg], { type: "image/svg+xml;charset=utf-8" }),
+      );
+      setSlideUrl(objectUrl);
+      setError("");
+    } catch {
+      setSlideUrl("");
+      setFallbackPreview(true);
+      setError("");
+    }
+    return () => {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [presentation, slideIndex]);
 
   useEffect(() => {
     const syncFullscreen = () => {
@@ -608,10 +729,12 @@ function PresentationViewer({ file }) {
     setExpanded(true);
   }
 
+  const slideCount = presentation?.deck.slides.length || 0;
   return (
     <section
       className={`presentation-viewer${expanded ? " presentation-expanded" : ""}`}
       ref={viewerRef}
+      aria-label={`Presentation viewer for ${file.name}`}
     >
       <div className="presentation-viewer-heading">
         <div className="presentation-viewer-title">
@@ -622,6 +745,32 @@ function PresentationViewer({ file }) {
           <a className="presentation-download" href={file.url} download>
             Download original
           </a>
+          <button
+            className="presentation-expand presentation-viewer-mode"
+            type="button"
+            disabled={!officeViewerSupported && viewMode === "local"}
+            aria-label={
+              officeViewerSupported
+                ? viewMode === "office"
+                  ? "Use local presentation preview"
+                  : "Try Microsoft presentation viewer"
+                : "Microsoft viewer requires a publicly hosted HTTPS version of Modulink"
+            }
+            onClick={() =>
+              setViewMode((mode) => (mode === "office" ? "local" : "office"))
+            }
+            title={
+              officeViewerSupported
+                ? "Switch between Microsoft and local presentation previews"
+                : "Microsoft's viewer needs a publicly hosted HTTPS version of Modulink"
+            }
+          >
+            {viewMode === "office"
+              ? "Local preview"
+              : officeViewerSupported
+                ? "Microsoft viewer"
+                : "Unavailable here"}
+          </button>
           <button
             className="presentation-expand"
             type="button"
@@ -652,14 +801,77 @@ function PresentationViewer({ file }) {
           </button>
         </div>
       </div>
-      <iframe
-        className="presentation-frame"
-        src={`/uploads/${encodeURIComponent(filename)}/preview`}
-        title={`Slide preview: ${file.name}`}
-        loading="lazy"
-        sandbox=""
-        referrerPolicy="no-referrer"
-      />
+      <div className="presentation-frame" aria-live="polite">
+        {viewMode === "office" ? (
+          <iframe
+            className="presentation-legacy-frame"
+            src={officeViewerUrl}
+            title={`Microsoft PowerPoint preview: ${file.name}`}
+            loading="lazy"
+            referrerPolicy="no-referrer"
+          />
+        ) : loading ? (
+          <p className="presentation-viewer-message">
+            Preparing presentation...
+          </p>
+        ) : error ? (
+          <div className="presentation-viewer-error" role="alert">
+            <p>{error}</p>
+            <a className="presentation-download" href={file.url} download>
+              Download the original presentation
+            </a>
+          </div>
+        ) : fallbackPreview ? (
+          <iframe
+            className="presentation-legacy-frame"
+            src={`/uploads/${encodeURIComponent(filename)}/preview`}
+            title={`Slide preview: ${file.name}`}
+            loading="lazy"
+            sandbox=""
+            referrerPolicy="no-referrer"
+          />
+        ) : (
+          <>
+            <div className="presentation-slide-stage">
+              {slideUrl && (
+                <img
+                  className="presentation-slide-image"
+                  src={slideUrl}
+                  alt={`Slide ${slideIndex + 1} of ${slideCount}`}
+                />
+              )}
+            </div>
+            <nav
+              className="presentation-slide-controls"
+              aria-label="Slide navigation"
+            >
+              <button
+                type="button"
+                className="presentation-slide-nav"
+                onClick={() => setSlideIndex((index) => Math.max(0, index - 1))}
+                disabled={slideIndex === 0}
+                aria-label="Previous slide"
+              >
+                <ChevronLeft size={18} /> Previous
+              </button>
+              <span aria-live="polite">
+                Slide {slideIndex + 1} of {slideCount}
+              </span>
+              <button
+                type="button"
+                className="presentation-slide-nav"
+                onClick={() =>
+                  setSlideIndex((index) => Math.min(slideCount - 1, index + 1))
+                }
+                disabled={slideIndex >= slideCount - 1}
+                aria-label="Next slide"
+              >
+                Next <ChevronRight size={18} />
+              </button>
+            </nav>
+          </>
+        )}
+      </div>
     </section>
   );
 }

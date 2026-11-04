@@ -63,8 +63,9 @@ app.use(
         frameAncestors: ["'none'"],
         scriptSrc: ["'self'"],
         styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
-        fontSrc: ["'self'", "https://fonts.gstatic.com"],
-        imgSrc: ["'self'", "data:"],
+        frameSrc: ["'self'", "https://view.officeapps.live.com"],
+        fontSrc: ["'self'", "https://fonts.gstatic.com", "blob:"],
+        imgSrc: ["'self'", "data:", "blob:"],
         connectSrc: ["'self'"],
         upgradeInsecureRequests:
           process.env.NODE_ENV === "production" ? [] : null,
@@ -681,6 +682,32 @@ function setPptxPreviewHeaders(res) {
     "Cache-Control": "private, no-store",
   });
 }
+app.get(
+  "/office-preview-files/:filename",
+  asyncRoute(async (req, res) => {
+    const filename = req.params.filename;
+    if (!/^[0-9a-f-]{36}\.pptx$/i.test(filename))
+      return fail(res, 404, "Presentation not found.");
+    const fileUrl = `/uploads/${filename}`;
+    const lesson = await Lesson.findOne({ "materials.url": fileUrl })
+      .select("materials")
+      .lean();
+    const material = lesson?.materials.find((item) => item.url === fileUrl);
+    if (!material) return fail(res, 404, "Presentation not found.");
+    const buffer = await getMaterialBuffer(material, filename);
+    res.set({
+      "Content-Type":
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+      "Content-Length": String(buffer.length),
+      "Content-Disposition": `inline; filename="${filename}"`,
+      "Cache-Control": "public, max-age=300",
+      "Access-Control-Allow-Origin": "*",
+      "X-Content-Type-Options": "nosniff",
+      "Referrer-Policy": "no-referrer",
+    });
+    return res.status(200).send(buffer);
+  }),
+);
 app.use("/api", (_req, res) => fail(res, 404, "API route not found."));
 const clientRoot = path.resolve(here, "../dist");
 if (existsSync(clientRoot)) {

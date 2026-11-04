@@ -1648,12 +1648,89 @@ button:focus-visible {
   outline-offset: 2px;
 }
 .presentation-frame {
-  display: block;
+  display: flex;
+  flex-direction: column;
   width: 100%;
   height: min(74vh, 780px);
   min-height: 430px;
+  overflow: hidden;
   border: 0;
   background: #eef0ec;
+}
+.presentation-slide-stage {
+  display: grid;
+  flex: 1;
+  min-height: 0;
+  place-items: center;
+  padding: clamp(8px, 2vw, 22px);
+  background: #e5e9e3;
+}
+.presentation-slide-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 5px 16px #26332924);
+}
+.presentation-legacy-frame {
+  display: block;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  background: #eef0ec;
+}
+.presentation-slide-controls {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 52px;
+  padding: 7px 14px;
+  border-top: 1px solid #d8ded6;
+  background: #fff;
+  color: #647066;
+  font-size: 13px;
+  font-weight: 600;
+}
+.presentation-slide-nav {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 0 9px;
+  border: 1px solid #dfe6dd;
+  border-radius: 7px;
+  background: #f8faf7;
+  color: #48634e;
+  font: inherit;
+  cursor: pointer;
+}
+.presentation-slide-nav:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.presentation-slide-nav:focus-visible {
+  outline: 2px solid #58745f;
+  outline-offset: 2px;
+}
+.presentation-viewer-message,
+.presentation-viewer-error {
+  display: grid;
+  flex: 1;
+  align-content: center;
+  justify-items: center;
+  gap: 10px;
+  margin: 0;
+  padding: 24px;
+  color: #647066;
+  text-align: center;
+}
+.presentation-viewer-error p {
+  margin: 0;
 }
 .presentation-viewer.presentation-expanded .presentation-frame {
   height: 88vh;
@@ -3995,6 +4072,15 @@ td small {
   .presentation-frame {
     height: 65vh;
     min-height: 320px;
+  }
+  .presentation-slide-controls {
+    min-height: 48px;
+    padding-inline: 8px;
+    font-size: 12px;
+  }
+  .presentation-slide-nav {
+    min-height: 34px;
+    padding-inline: 5px;
   }
   .presentation-viewer.presentation-expanded .presentation-frame {
     height: 88vh;
