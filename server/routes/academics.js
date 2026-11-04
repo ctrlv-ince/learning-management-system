@@ -2010,13 +2010,6 @@ router.get(
         ? await facultyOffering(req.params.offeringId, req.user.id)
         : await studentOffering(req.params.offeringId, req.user.id);
     if (!offering) return fail(res, 404, "Course offering not found.");
-    const gradeQuery = Grade.find({
-      offering: offering.id,
-      ...(req.user.role === "student" ? { student: req.user.id } : {}),
-    });
-    if (req.user.role === "faculty")
-      gradeQuery.populate("student", "firstName lastName email");
-    const grades = await gradeQuery.lean();
     const attempts = await Attempt.find({
       offering: offering.id,
       ...(req.user.role === "student" ? { student: req.user.id } : {}),
@@ -2074,26 +2067,11 @@ router.get(
       const quizScores = [...latestQuizScores.entries()]
         .filter(([key]) => key.startsWith(`${studentId}:`))
         .map(([, score]) => score);
-      const studentGrades = grades.filter(
-        (grade) =>
-          String(grade.student?._id || grade.student) === studentId &&
-          grade.category.toLowerCase() !== "quiz",
-      );
       const quizAverage = quizScores.length
         ? Math.round(
             (quizScores.reduce((total, score) => total + score, 0) /
               quizScores.length) *
               100,
-          ) / 100
-        : null;
-      const otherAverage = studentGrades.length
-        ? Math.round(
-            (studentGrades.reduce(
-              (total, item) => total + item.score / item.maxScore,
-              0,
-            ) *
-              10000) /
-              studentGrades.length,
           ) / 100
         : null;
       const grade = quizAverage;
@@ -2102,11 +2080,9 @@ router.get(
         student: rosterById.get(studentId) || null,
         grade,
         quizAverage,
-        otherAverage,
       };
     });
     return success(res, {
-      grades,
       attempts,
       weights,
       courseGrades,
@@ -2134,48 +2110,9 @@ router.put(
 router.put(
   "/offerings/:offeringId/grades",
   allowRoles("faculty"),
-  asyncRoute(async (req, res) => {
-    if (!id.safeParse(req.params.offeringId).success)
-      return fail(res, 400, "Invalid course offering.");
-    const offering = await facultyOffering(req.params.offeringId, req.user.id);
-    const parsed = isValid(
-      z.object({
-        student: id,
-        category: z.string().trim().min(1).max(40),
-        title: z.string().trim().min(1).max(120),
-        score: z.number().min(0),
-        maxScore: z.number().positive(),
-        remarks: z.string().max(1000).optional(),
-      }),
-      req.body,
-    );
-    if (!offering || !parsed.success)
-      return fail(
-        res,
-        offering ? 400 : 404,
-        parsed.success
-          ? "Course offering not found."
-          : parsed.error.issues[0].message,
-      );
-    if (
-      !offering.students.some(
-        (student) => String(student) === parsed.data.student,
-      ) ||
-      parsed.data.score > parsed.data.maxScore
-    )
-      return fail(res, 400, "Enter a valid enrolled student and score.");
-    const grade = await Grade.findOneAndUpdate(
-      {
-        student: parsed.data.student,
-        offering: offering.id,
-        category: parsed.data.category,
-        title: parsed.data.title,
-      },
-      { ...parsed.data, offering: offering.id, updatedBy: req.user.id },
-      { upsert: true, new: true, runValidators: true },
-    );
-    return success(res, grade);
-  }),
+  asyncRoute(async (_req, res) =>
+    fail(res, 410, "Grades come from Modulink quiz attempts only."),
+  ),
 );
 
 export default router;

@@ -665,7 +665,6 @@ export function GradesPage() {
           `Lesson ${quiz.sequence}: attempts in current run`,
         ]),
         "Quiz average (latest attempt per quiz)",
-        "Other coursework average (not included)",
         "Quiz-only course grade",
       ],
       ...orderedQuizSummary.map((item) => [
@@ -677,7 +676,6 @@ export function GradesPage() {
           return [attempt ? `${attempt.percent ?? 0}%` : "", run?.count ?? ""];
         }),
         item.quizAverage == null ? "" : `${item.quizAverage}%`,
-        item.otherAverage == null ? "" : `${item.otherAverage}%`,
         item.grade == null ? "" : `${item.grade}%`,
       ]),
     ];
@@ -903,20 +901,10 @@ export function GradesPage() {
             ) : (
               <p className="muted table-empty">No quiz attempts yet.</p>
             )}
-            {faculty && (
-              <div className="no-print">
-                <GradeEntry
-                  offeringId={selected}
-                  onSaved={async () =>
-                    setGradeData(await api(`/offerings/${selected}/grades`))
-                  }
-                />
-              </div>
-            )}
             <h2 className="table-section-title">Course grades</h2>
             <p className="muted gradebook-calculation-note">
-              Course grades are calculated from quiz scores only. Other
-              coursework is recorded separately and does not affect this grade.
+              Course grades use quiz scores from assessments completed on
+              Modulink.
             </p>
             {gradeData.courseGrades.length ? (
               <div className="table-wrap">
@@ -925,8 +913,7 @@ export function GradesPage() {
                     <tr>
                       {faculty && <th>STUDENT</th>}
                       <th>QUIZ AVERAGE</th>
-                      <th>OTHER COURSEWORK (NOT COUNTED)</th>
-                      <th>QUIZ-ONLY COURSE GRADE</th>
+                      <th>QUIZ COURSE GRADE</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -940,11 +927,6 @@ export function GradesPage() {
                             {item.quizAverage == null
                               ? "—"
                               : `${item.quizAverage}%`}
-                          </td>
-                          <td>
-                            {item.otherAverage == null
-                              ? "—"
-                              : `${item.otherAverage}%`}
                           </td>
                           <td>
                             {item.grade == null
@@ -962,117 +944,12 @@ export function GradesPage() {
                 No enrolled students or grades recorded.
               </p>
             )}
-            <h2 className="table-section-title">Individual grade entries</h2>
-            {gradeData.grades.length ? (
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>{faculty ? "STUDENT" : "CATEGORY"}</th>
-                      <th>ASSESSMENT</th>
-                      <th>SCORE</th>
-                      <th>REMARKS</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {gradeData.grades.map((grade) => (
-                      <tr key={grade._id}>
-                        <td>
-                          {faculty ? fullName(grade.student) : grade.category}
-                        </td>
-                        <td>{grade.title}</td>
-                        <td>
-                          {grade.score} / {grade.maxScore}
-                        </td>
-                        <td>{grade.remarks || "—"}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <p className="muted table-empty">
-                No additional grades recorded.
-              </p>
-            )}
           </>
         ) : (
           <Loading />
         )}
       </section>
     </div>
-  );
-}
-
-export function GradeEntry({ offeringId, onSaved }) {
-  const { notify } = useAuth();
-  const [students, setStudents] = useState([]);
-  useEffect(() => {
-    api(`/offerings/${offeringId}/students`)
-      .then(setStudents)
-      .catch((error) => notify(error.message));
-  }, [offeringId]);
-  async function save(event) {
-    event.preventDefault();
-    const gradeForm = event.currentTarget;
-    if (!validateRequiredValues(gradeForm)) return;
-    const values = Object.fromEntries(new FormData(gradeForm));
-    values.score = Number(values.score);
-    values.maxScore = Number(values.maxScore);
-    try {
-      await api(`/offerings/${offeringId}/grades`, send("PUT", values));
-      notify("Course grade saved.");
-      gradeForm.reset();
-      await onSaved();
-    } catch (error) {
-      notify(error.message);
-    }
-  }
-  if (!students.length) return null;
-  return (
-    <form className="grade-entry" onSubmit={save}>
-      <div>
-        <span className="eyebrow">ADD OR EDIT A COURSE GRADE</span>
-        <p>
-          Course grade calculation uses quiz scores only; this entry is kept as
-          a separate record.
-        </p>
-      </div>
-      <div className="grade-entry-fields">
-        <select name="student" required defaultValue="">
-          <option value="" disabled>
-            Choose a student
-          </option>
-          {students.map((student) => (
-            <option value={student._id} key={student._id}>
-              {fullName(student)}
-            </option>
-          ))}
-        </select>
-        <input name="category" placeholder="Category (e.g. project)" required />
-        <input name="title" placeholder="Assessment name" required />
-        <input
-          name="score"
-          type="number"
-          min="0"
-          step="0.01"
-          placeholder="Score"
-          required
-        />
-        <input
-          name="maxScore"
-          type="number"
-          min="0.01"
-          step="0.01"
-          placeholder="Out of"
-          required
-        />
-        <input name="remarks" placeholder="Remark (optional)" />
-        <button className="button primary">
-          <Plus size={14} /> Save grade
-        </button>
-      </div>
-    </form>
   );
 }
 
