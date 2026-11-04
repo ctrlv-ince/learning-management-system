@@ -228,6 +228,7 @@ button {
 .auth-footer {
   display: flex;
   justify-content: space-between;
+  gap: 14px 24px;
   color: #999e96;
   font-size: 12px;
   letter-spacing: 1.3px;
@@ -380,9 +381,14 @@ button:focus-visible {
 }
 .auth-switch {
   margin-top: 23px;
+  margin-bottom: 24px;
   text-align: center;
   font-size: 13px;
   color: #858a83;
+}
+.auth-footer {
+  margin-top: 24px;
+  line-height: 1.55;
 }
 .auth-switch a {
   margin-left: 4px;
@@ -2837,6 +2843,8 @@ td small {
   .auth-footer {
     font-size: 12px;
     letter-spacing: 0.8px;
+    flex-wrap: wrap;
+    row-gap: 10px;
   }
   .field-row {
     gap: 8px;
