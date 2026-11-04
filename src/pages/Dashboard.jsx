@@ -32,7 +32,7 @@ export function Dashboard() {
   const { session } = useAuth();
   const { data, loading, error, refresh } = useData("/dashboard");
   const faculty = session.user.role === "faculty";
-  if (loading) return <Loading />;
+  if (loading) return <Loading variant="dashboard" />;
   if (!data)
     return (
       <div className="page-shell">
@@ -224,6 +224,7 @@ export function StudentDashboard({ data, profile }) {
   );
   const [savingYearLevel, setSavingYearLevel] = useState(false);
   const [nextLesson, setNextLesson] = useState(null);
+  const [courseProgress, setCourseProgress] = useState({});
   const [nextLessonLoading, setNextLessonLoading] = useState(true);
   const [nextLessonError, setNextLessonError] = useState("");
   const [nextLessonRetry, setNextLessonRetry] = useState(0);
@@ -239,12 +240,30 @@ export function StudentDashboard({ data, profile }) {
             lessons: await api(`/offerings/${offering._id}/lessons`),
           })),
         );
-        const candidate = lessonResults
+        const successfulLessons = lessonResults
           .filter((result) => result.status === "fulfilled")
-          .map((result) => result.value)
+          .map((result) => result.value);
+        const loadedById = new Map(successfulLessons.map(({ offering, lessons }) => [String(offering._id), lessons]));
+        const summaries = Object.fromEntries((data.offerings || []).map((offering) => {
+          const lessons = loadedById.get(String(offering._id));
+          if (!lessons) return [offering._id, { completed: 0, total: 0, percent: 0, nextTitle: "Progress unavailable" }];
+          const completed = lessons.filter((lesson) => lesson.status === "completed").length;
+          const next = lessons.find((lesson) => lesson.status === "available");
+          return [offering._id, {
+            completed,
+            total: lessons.length,
+            percent: lessons.length ? Math.round((completed * 100) / lessons.length) : 0,
+            nextTitle: next ? `Next: ${next.title}` : lessons.length ? "All lessons complete" : "No lessons published",
+          }];
+        }));
+        const candidate = successfulLessons
           .flatMap(({ offering, lessons }) => lessons.map((lesson) => ({ ...lesson, offering })))
           .find((lesson) => lesson.status === "available");
-        if (active) setNextLesson(candidate || null);
+        if (active) setCourseProgress(summaries);
+        if (active) {
+          setNextLesson(candidate || null);
+          if (!successfulLessons.length && data.offerings.length) setNextLessonError("Course progress is temporarily unavailable.");
+        }
       } catch (error) {
         if (active) {
           setNextLesson(null);
@@ -370,7 +389,7 @@ export function StudentDashboard({ data, profile }) {
                   key={offering._id}
                   offering={offering}
                   index={i}
-                  progress={progress}
+                  progress={courseProgress[offering._id]}
                 />
               ))}
             </div>

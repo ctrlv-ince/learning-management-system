@@ -48,11 +48,31 @@ export function Breadcrumbs({ items = [] }) {
   );
 }
 
-export function Loading() {
+const statusLabels = {
+  completed: "Completed", available: "Ready", locked: "Locked", draft: "Draft",
+  published: "Published", passed: "Passed", failed: "Retry needed", pending: "Pending",
+};
+export function StatusBadge({ status, children }) {
+  return <span className={`status-badge status-${status}`}>{children || statusLabels[status] || status}</span>;
+}
+
+export function Loading({ variant = "page", count = 3 }) {
   return (
-    <div className="loading" role="status" aria-live="polite">
-      <span className="spinner" />
-      Finding your place…
+    <div className={`skeleton-page skeleton-${variant}`} role="status" aria-label="Loading content">
+      <span className="sr-only">Loading content</span>
+      <div className="skeleton-heading">
+        <span className="skeleton-block skeleton-eyebrow" />
+        <span className="skeleton-block skeleton-title" />
+        <span className="skeleton-block skeleton-subtitle" />
+      </div>
+      {variant === "dashboard" && <div className="skeleton-stats">{Array.from({ length: 3 }, (_, index) => <span className="skeleton-block" key={index} />)}</div>}
+      {variant === "courses" ? (
+        <div className="skeleton-cards">{Array.from({ length: count }, (_, index) => <div className="skeleton-card" key={index}><span className="skeleton-block skeleton-art" /><span className="skeleton-block skeleton-line short" /><span className="skeleton-block skeleton-line" /><span className="skeleton-block skeleton-line medium" /><span className="skeleton-block skeleton-line footer" /></div>)}</div>
+      ) : variant === "table" ? (
+        <div className="skeleton-table">{Array.from({ length: 6 }, (_, index) => <span className="skeleton-block" key={index} />)}</div>
+      ) : (
+        <div className="skeleton-panels"><div className="skeleton-panel"><span className="skeleton-block skeleton-line" /><span className="skeleton-block skeleton-line medium" /><span className="skeleton-block skeleton-line" /><span className="skeleton-block skeleton-line short" /></div>{variant !== "lesson" && <div className="skeleton-panel"><span className="skeleton-block skeleton-line" /><span className="skeleton-block skeleton-line medium" /><span className="skeleton-block skeleton-line" /><span className="skeleton-block skeleton-line short" /></div>}</div>
+      )}
     </div>
   );
 }
@@ -71,7 +91,7 @@ export function useData(path) {
   return { ...state, refresh };
 }
 
-export function CourseRow({ offering, index, showRoster = false }) {
+export function CourseRow({ offering, index, showRoster = false, progress }) {
   const colors = [
     "course-mint",
     "course-lilac",
@@ -94,6 +114,12 @@ export function CourseRow({ offering, index, showRoster = false }) {
           {offering.academicYear?.label || "Current year"} ·{" "}
           {semesterLabel(offering.semester)}
         </small>
+        {progress && (
+          <span className="course-row-progress">
+            <span className="course-progress-track"><span style={{ width: `${progress.percent}%` }} /></span>
+            <small>{progress.completed}/{progress.total} lessons · {progress.nextTitle || (progress.total ? "All lessons complete" : "No lessons published")}</small>
+          </span>
+        )}
       </div>
       <div className="course-row-meta">
         {showRoster && (

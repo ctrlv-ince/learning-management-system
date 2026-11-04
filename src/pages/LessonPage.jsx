@@ -16,7 +16,7 @@ import {
 import { api, apiUpload, send } from "../api.js";
 import { validateRequiredValues } from "../formValidation.js";
 import { normalizePresentationNamespacePrefixes } from "../presentationCompatibility.js";
-import { useAuth, Loading, Breadcrumbs } from "../shared.jsx";
+import { useAuth, Loading, Breadcrumbs, PageHeader } from "../shared.jsx";
 
 function formatUploadSize(bytes) {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
@@ -288,7 +288,7 @@ export function LessonPage() {
       setBusy(false);
     }
   }
-  if (!data && pageLoading) return <Loading />;
+  if (!data && pageLoading) return <Loading variant="lesson" />;
   if (!data)
     return (
       <div className="page-shell">
@@ -330,21 +330,11 @@ export function LessonPage() {
   return (
     <div className="page-shell">
       <Breadcrumbs items={[{ label: "Courses", to: "/courses" }, { label: "Course", to: `/courses/${lesson.offering}` }, { label: `Lesson ${String(lesson.sequence).padStart(2, "0")}: ${lesson.title}` }]} />
-      <Link to={`/courses/${lesson.offering}`} className="back-link">
-        ← Back to course
-      </Link>
-      <div className="lesson-page-head">
-        <span className="eyebrow">
-          LESSON {String(lesson.sequence).padStart(2, "0")}{" "}
-          <span className="eyebrow-dot">·</span>{" "}
-          {faculty ? "FACULTY VIEW" : "YOUR LEARNING PATH"}
-        </span>
-        <h1>
-          {lesson.title}
-          <span className="title-period">.</span>
-        </h1>
-        <p className="muted">{lesson.description}</p>
-      </div>
+      <PageHeader
+        eyebrow={`LESSON ${String(lesson.sequence).padStart(2, "0")} · ${faculty ? "FACULTY VIEW" : "YOUR LEARNING PATH"}`}
+        title={lesson.title}
+        detail={lesson.description}
+      />
       <div className={`lesson-content-grid${quizInProgress ? " quiz-focus-mode" : ""}`}>
         {!quizInProgress && <article className="lesson-content panel">
           <div className="content-kicker">
@@ -634,6 +624,7 @@ export function LessonPage() {
                         <div className="quiz-progress" role="status" aria-live="polite">
                           <span>{answeredQuestionCount} of {quiz.questions.length} answered</span>
                           <span>{quiz.questions.length - answeredQuestionCount} remaining</span>
+                          <span className="quiz-sticky-timer">{secondsLeft == null ? "Timer active" : secondsLeft > 0 ? `${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, "0")} left` : "Time expired"}</span>
                           <progress max={quiz.questions.length} value={answeredQuestionCount} aria-label="Quiz questions answered" />
                         </div>
                         {quizFormError && <p className="upload-error" role="alert">{quizFormError}</p>}
@@ -750,6 +741,7 @@ function PresentationViewer({ file }) {
   const [slideIndex, setSlideIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [retryPreview, setRetryPreview] = useState(0);
   const filename = file.url.split("/").pop();
   const sourceUrl = new URL(
     `/office-preview-files/${encodeURIComponent(filename)}`,
@@ -834,7 +826,7 @@ function PresentationViewer({ file }) {
       cancelled = true;
       parsedDeck?.dispose?.();
     };
-  }, [filename, viewMode]);
+  }, [filename, viewMode, retryPreview]);
 
   useEffect(() => {
     if (!presentation) return undefined;
@@ -985,20 +977,25 @@ function PresentationViewer({ file }) {
       </div>
       <div className="presentation-frame" aria-live="polite">
         {viewMode === "office" ? (
-          <iframe
-            className="presentation-legacy-frame"
-            src={officeViewerUrl}
-            title={`Microsoft PowerPoint preview: ${file.name}`}
-            loading="lazy"
-            referrerPolicy="no-referrer"
-          />
+          <div className="office-preview-shell">
+            <p className="office-preview-help">Microsoft’s viewer may take a moment to load. If it stays blank, switch to local preview or download the original.</p>
+            <iframe
+              className="presentation-legacy-frame"
+              src={officeViewerUrl}
+              title={`Microsoft PowerPoint preview: ${file.name}`}
+              loading="lazy"
+              referrerPolicy="no-referrer"
+            />
+          </div>
         ) : loading ? (
-          <p className="presentation-viewer-message">
-            Preparing presentation...
-          </p>
+          <div className="presentation-preview-skeleton" role="status" aria-label="Loading presentation preview">
+            <span className="presentation-skeleton-label">Preparing presentation preview…</span>
+            <div className="presentation-skeleton-slide"><i /><i /><i /><b /></div>
+          </div>
         ) : error ? (
           <div className="presentation-viewer-error" role="alert">
             <p>{error}</p>
+            <button className="button secondary" type="button" onClick={() => { setError(""); setLoading(true); setRetryPreview((value) => value + 1); }}>Try preview again</button>
             <a className="presentation-download" href={file.url} download>
               Download the original presentation
             </a>

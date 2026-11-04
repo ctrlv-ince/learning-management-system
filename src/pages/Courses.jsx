@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+﻿import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   ArrowDown,
@@ -22,15 +22,42 @@ import {
   Loading,
   EmptyPanel,
   semesterLabel,
+  StatusBadge,
 } from "../shared.jsx";
 
 export function Courses() {
   const { data, loading, error } = useData("/offerings");
   const { session, notify } = useAuth();
   const faculty = session.user.role === "faculty";
+  const [courseProgress, setCourseProgress] = useState({});
   const [joinCode, setJoinCode] = useState("");
   const [joinRequests, setJoinRequests] = useState([]);
   const [joining, setJoining] = useState(false);
+  useEffect(() => {
+    if (faculty || !data?.length) return;
+    let active = true;
+    Promise.allSettled(data.map(async (offering) => ({
+      id: offering._id,
+      lessons: await api(`/offerings/${offering._id}/lessons`),
+    }))).then((results) => {
+      if (!active) return;
+      const summaries = Object.fromEntries(data.map((offering, index) => {
+        const result = results[index];
+        if (result.status !== "fulfilled") return [offering._id, { completed: 0, total: 0, percent: 0, nextTitle: "Progress unavailable" }];
+        const { lessons } = result.value;
+        const completed = lessons.filter((lesson) => lesson.status === "completed").length;
+        const next = lessons.find((lesson) => lesson.status === "available");
+        return [offering._id, {
+          completed,
+          total: lessons.length,
+          percent: lessons.length ? Math.round(completed * 100 / lessons.length) : 0,
+          nextTitle: next ? `Next: ${next.title}` : lessons.length ? "All lessons complete" : "No lessons published",
+        }];
+      }));
+      setCourseProgress(summaries);
+    });
+    return () => { active = false; };
+  }, [data, faculty]);
   useEffect(() => {
     if (!faculty)
       api("/my-enrollment-requests")
@@ -55,7 +82,7 @@ export function Courses() {
       setJoining(false);
     }
   }
-  if (loading) return <Loading />;
+  if (loading) return <Loading variant="courses" />;
   return (
     <div className="page-shell">
       <PageHeader
@@ -152,6 +179,20 @@ export function Courses() {
                   {offering.course?.description ||
                     "A course built around thoughtful practice."}
                 </p>
+                {faculty ? (
+                  <div className="course-enrollment-meter">
+                    <div><span>ENROLLMENT</span><b>{offering.students?.length ?? 0}/40</b></div>
+                    <span className="course-progress-track"><span style={{ width: `${Math.min(100, (offering.students?.length ?? 0) * 100 / 40)}%` }} /></span>
+                  </div>
+                ) : courseProgress[offering._id] ? (
+                  <div className="course-progress-card">
+                    <div><span>LESSON PROGRESS</span><b>{courseProgress[offering._id].percent}%</b></div>
+                    <span className="course-progress-track"><span style={{ width: `${courseProgress[offering._id].percent}%` }} /></span>
+                    <small>{courseProgress[offering._id].completed} of {courseProgress[offering._id].total} lessons · {courseProgress[offering._id].nextTitle}</small>
+                  </div>
+                ) : (
+                  <div className="course-progress-card is-loading" aria-label="Loading course progress"><span className="skeleton-block skeleton-line" /></div>
+                )}
                 <div className="course-card-footer">
                   <span>
                     <Users size={14} /> {offering.enrollmentCount ?? offering.students?.length ?? 0}{" "}
@@ -242,7 +283,7 @@ export function CoursePage() {
       notify(error.message);
     }
   }
-  if (!lessons && !loadError) return <Loading />;
+  if (!lessons && !loadError) return <Loading variant="course-detail" />;
   if (loadError)
     return (
       <div className="page-shell">
@@ -257,29 +298,17 @@ export function CoursePage() {
   return (
     <div className="page-shell">
       <Breadcrumbs items={[{ label: "Courses", to: "/courses" }, { label: offering?.course?.title || "Course" }]} />
-      <Link to="/courses" className="back-link">
-        ← All courses
-      </Link>
-      <div className="course-detail-head">
-        <div>
-          <span className="eyebrow">
-            {offering?.course?.code} <span className="eyebrow-dot">·</span>{" "}
-            {offering?.section?.name}
-          </span>
-          <h1>
-            {offering?.course?.title || "Course lessons"}
-            <span className="title-period">.</span>
-          </h1>
-          <p className="muted">
-            {offering?.course?.description ||
-              `${offering?.academicYear?.label || ""} · ${semesterLabel(offering?.semester || "")}`}
-          </p>
-        </div>
-        {faculty && (
-          <span className="year-tag">
-            <Users size={14} /> {offering?.students?.length || 0} students
-          </span>
-        )}
+      <PageHeader
+        eyebrow={`COURSE · ${offering?.course?.code || "LESSONS"} · ${offering?.section?.name || ""}`}
+        title={offering?.course?.title || "Course lessons"}
+        detail={offering?.course?.description || `${offering?.academicYear?.label || ""} · ${semesterLabel(offering?.semester || "")}`}
+        action={faculty && <span className="year-tag"><Users size={14} /> {offering?.students?.length || 0} students</span>}
+      />
+      <div className="course-context-strip" aria-label="Course details">
+        <span><small>TERM</small><b>{semesterLabel(offering?.semester || "")} · {offering?.academicYear?.label || "Academic year"}</b></span>
+        <span><small>SECTION</small><b>{offering?.section?.name || "Section not set"} · {offering?.section?.yearLevel || "Year level not set"}</b></span>
+        <span><small>FACULTY</small><b>{offering?.faculty ? `${offering.faculty.firstName} ${offering.faculty.lastName}` : faculty ? "You" : "Faculty member"}</b></span>
+        {!faculty && <span><small>YOUR PROGRESS</small><b>{lessons.filter((lesson) => lesson.status === "completed").length} of {lessons.length} lessons complete</b></span>}
       </div>
       <div className="lesson-layout">
         <section className="lesson-list panel">
@@ -288,7 +317,7 @@ export function CoursePage() {
               <span className="eyebrow">A SEQUENCE, NOT A RACE</span>
               <h2>Course lessons</h2>
             </div>
-            <span className="lesson-total">{lessons.length} LESSONS</span>
+            <span className="lesson-total">{lessons.filter((lesson) => lesson.status === "completed").length}/{lessons.length} COMPLETE</span>
           </div>
           {lessons.length ? (
             <div className="lesson-items">
@@ -299,6 +328,7 @@ export function CoursePage() {
                   faculty={faculty}
                   index={index}
                   count={lessons.length}
+                  previousLessonTitle={lessons[index - 1]?.title}
                   onMove={moveLesson}
                 />
               ))}
@@ -369,10 +399,11 @@ export function CoursePage() {
   );
 }
 
-export function LessonRow({ lesson, faculty, index, count, onMove }) {
+export function LessonRow({ lesson, faculty, index, count, onMove, previousLessonTitle }) {
   const status = lesson.status || (lesson.published ? "available" : "draft");
+  const isCurrent = !faculty && status === "available";
   return (
-    <div className={`lesson-row ${status}`}>
+    <div className={`lesson-row ${status}${isCurrent ? " is-current" : ""}`} aria-current={isCurrent ? "step" : undefined}>
       <span
         className={`lesson-step ${status === "completed" ? "step-complete" : status === "locked" ? "step-locked" : ""}`}
       >
@@ -385,19 +416,23 @@ export function LessonRow({ lesson, faculty, index, count, onMove }) {
         )}
       </span>
       <div className="lesson-copy">
-        <span className="lesson-status">
+        <StatusBadge status={faculty && !lesson.published ? "draft" : status}>
           {status === "completed"
             ? "COMPLETED"
             : status === "locked"
               ? "LOCKED"
+              : isCurrent
+                ? "NEXT UP"
               : faculty && !lesson.published
                 ? "DRAFT"
                 : "READY WHEN YOU ARE"}
-        </span>
+        </StatusBadge>
         <strong>{lesson.title}</strong>
         <small>
           {status === "locked"
-            ? "Pass the previous lesson assessment to unlock this lesson."
+            ? index > 0
+              ? `Pass “${previousLessonTitle || lesson.previousLessonTitle || "the previous lesson"}” to unlock this lesson.`
+              : "This lesson is locked. Ask your faculty member for help."
             : lesson.description ||
             (lesson.quiz
               ? `Assessment · pass ${lesson.quiz.passingPercent}%`

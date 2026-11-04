@@ -25,6 +25,7 @@ import {
   fullName,
   initials,
   semesterLabel,
+  StatusBadge,
 } from "../shared.jsx";
 
 export function StudentsPage() {
@@ -143,7 +144,7 @@ export function StudentsPage() {
       setRemovingStudent("");
     }
   }
-  if (loading) return <Loading />;
+  if (loading) return <Loading variant="table" />;
   return (
     <div className="page-shell">
       <PageHeader
@@ -385,7 +386,7 @@ export function StudentsPage() {
 export function StudentClassmatesPage() {
   const { data, loading, error } = useData("/classmates");
   const [search, setSearch] = useState("");
-  if (loading) return <Loading />;
+  if (loading) return <Loading variant="page" />;
   const query = search.trim().toLowerCase();
   const filteredOfferings = (data || []).map((offering) => {
     const courseMatches = `${offering.course?.code || ""} ${offering.course?.title || ""} ${offering.section?.name || ""}`.toLowerCase().includes(query);
@@ -467,7 +468,7 @@ export function FacultyDirectoryPage() {
   const { data, loading, error } = useData("/faculty");
   const { session } = useAuth();
   const [search, setSearch] = useState("");
-  if (loading) return <Loading />;
+  if (loading) return <Loading variant="page" />;
   const query = search.trim().toLowerCase();
   const filteredDepartments = (data || []).map((department) => {
     const departmentMatches = `${department.code} ${department.name}`.toLowerCase().includes(query);
@@ -645,13 +646,22 @@ export function GradesPage() {
         (a.student?.firstName || "").localeCompare(b.student?.firstName || ""),
   );
   const filteredQuizSummary = orderedQuizSummary.filter((item) => matchesGradeSearch(item.student));
+  const gradedStudents = (gradeData?.courseGrades || []).filter((item) => item.grade != null);
+  const classAverage = gradedStudents.length
+    ? Math.round(gradedStudents.reduce((total, item) => total + item.grade, 0) / gradedStudents.length)
+    : null;
+  const latestRuns = [...attemptsByStudentQuiz.values()].map((history) => history.at(-1));
+  const passRate = latestRuns.length
+    ? Math.round(latestRuns.filter((attempt) => attempt.passed).length * 100 / latestRuns.length)
+    : null;
+  const studentsNeedingRetry = new Set(latestRuns.filter((attempt) => !attempt.passed).map((attempt) => String(attempt.student?._id || attempt.student))).size;
   useEffect(() => {
     if (selected)
       api(`/offerings/${selected}/grades`)
         .then(setGradeData)
         .catch((error) => notify(error.message));
   }, [selected]);
-  if (loading) return <Loading />;
+  if (loading) return <Loading variant="table" />;
   async function resetProgress(attempt) {
     if (
       !window.confirm(
@@ -816,11 +826,19 @@ export function GradesPage() {
           </div>
         ) : gradeData ? (
           <>
-            <label className="list-search gradebook-search no-print">
-              Search this gradebook
-              <input type="search" value={gradeSearch} onChange={(event) => setGradeSearch(event.target.value)} placeholder={faculty ? "Student name or email" : "Lesson or assessment"} />
-              <small>Search filters the rows shown on screen.</small>
-            </label>
+            {faculty && (
+              <div className="gradebook-overview" aria-label="Course assessment overview">
+                <article><span>CLASS AVERAGE</span><strong>{classAverage == null ? "—" : `${classAverage}%`}</strong><small>{gradedStudents.length} students with grades</small></article>
+                <article><span>PASS RATE</span><strong>{passRate == null ? "—" : `${passRate}%`}</strong><small>Latest result per quiz</small></article>
+                <article><span>RETRY NEEDED</span><strong>{studentsNeedingRetry}</strong><small>Latest quiz result is below passing</small></article>
+              </div>
+            )}
+            <div className="gradebook-toolbar no-print">
+              <label className="list-search gradebook-search">
+                Search this gradebook
+                <input type="search" value={gradeSearch} onChange={(event) => setGradeSearch(event.target.value)} placeholder={faculty ? "Student name or email" : "Lesson or assessment"} />
+                <small>Search filters the rows shown on screen.</small>
+              </label>
             {faculty && (
               <h2 className="grade-report-print-title">
                 {offerings?.find((item) => item._id === selected)?.course
@@ -829,7 +847,7 @@ export function GradesPage() {
               </h2>
             )}
             {faculty && (
-              <div className="gradebook-actions no-print">
+              <div className="gradebook-actions">
                 <label>
                   Sort summary by
                   <select
@@ -860,6 +878,7 @@ export function GradesPage() {
                 </button>
               </div>
             )}
+            </div>
             {faculty && (
               <>
                 <h2 className="table-section-title">
@@ -959,11 +978,7 @@ export function GradesPage() {
                           </details>
                         </td>
                         <td>
-                          <span
-                            className={`grade-status ${attempt.passed ? "good" : "needs-work"}`}
-                          >
-                            {attempt.passed ? "Passed" : "Needs another try"}
-                          </span>
+                          <StatusBadge status={attempt.passed ? "passed" : "failed"} />
                         </td>
                         <td>
                           {attempt.earnedPoints} / {attempt.totalPoints}{" "}
@@ -1042,7 +1057,7 @@ export function GradesPage() {
             )}
           </>
         ) : (
-          <Loading />
+          <Loading variant="table" />
         )}
       </section>
     </div>

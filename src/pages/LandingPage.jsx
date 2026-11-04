@@ -2,6 +2,8 @@ import {
   ArrowRight,
   ArrowUpRight,
   BookOpen,
+  CircleHelp,
+  FileText,
   Layers3,
   UsersRound,
 } from "lucide-react";
@@ -178,6 +180,64 @@ export function LandingPage() {
               <small>Progress that stays with you.</small>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="landing-workflow" aria-labelledby="landing-workflow-title">
+        <div className="landing-workflow-heading">
+          <span className="landing-workflow-kicker">THE MODULINK FLOW</span>
+          <h2 id="landing-workflow-title">A course that keeps every step connected.</h2>
+          <p>Materials lead into focused lessons. Lessons lead into quizzes. Progress makes the next step clear.</p>
+        </div>
+        <div className="landing-workflow-steps">
+          <article className="landing-workflow-step">
+            <span className="landing-workflow-icon"><FileText size={20} /></span>
+            <small>01 · GET ORIENTED</small>
+            <h3>Start with the material</h3>
+            <p>Find course notes and presentations alongside the lesson they support.</p>
+          </article>
+          <span className="landing-workflow-connector" aria-hidden="true"><i /></span>
+          <article className="landing-workflow-step">
+            <span className="landing-workflow-icon"><BookOpen size={20} /></span>
+            <small>02 · LEARN IN ORDER</small>
+            <h3>Take one lesson at a time</h3>
+            <p>Follow a clear sequence, with the next lesson ready when you are.</p>
+          </article>
+          <span className="landing-workflow-connector" aria-hidden="true"><i /></span>
+          <article className="landing-workflow-step">
+            <span className="landing-workflow-icon"><CircleHelp size={20} /></span>
+            <small>03 · CHECK YOUR UNDERSTANDING</small>
+            <h3>Practice and keep moving</h3>
+            <p>Take the lesson quiz, see your result, and retry when you need to.</p>
+          </article>
+        </div>
+        <Link className="landing-workflow-link" to="/how-it-works">See how Modulink works <ArrowRight size={16} /></Link>
+      </section>
+
+      <section className="landing-audiences" aria-labelledby="landing-audiences-title">
+        <div className="landing-section-heading landing-audiences-heading">
+          <span className="eyebrow">ONE CAMPUS, TWO WORKFLOWS</span>
+          <h2 id="landing-audiences-title">A clearer way to move learning forward.</h2>
+          <p>Students and faculty get the tools they need, with each course organized around a shared learning path.</p>
+        </div>
+        <div className="landing-audience-grid">
+          <article className="landing-audience-card student-audience">
+            <span className="landing-audience-index">01 / STUDENTS</span>
+            <h3>Always know what comes next.</h3>
+            <p>Follow lessons in sequence, view course materials, and retry quizzes until you meet the passing score.</p>
+            <Link to={session ? "/courses" : "/student-guide"}>{session ? "Open your courses" : "Explore the student guide"}<ArrowRight size={16} /></Link>
+          </article>
+          <article className="landing-audience-card faculty-audience">
+            <span className="landing-audience-index">02 / FACULTY</span>
+            <h3>Build a path your students can follow.</h3>
+            <p>Keep presentations, lesson notes, quizzes, and class progress together in each course offering.</p>
+            <Link to={session ? "/courses" : "/faculty-guide"}>{session ? "Manage your courses" : "Explore the faculty guide"}<ArrowRight size={16} /></Link>
+          </article>
+        </div>
+        <div className="landing-feature-rail" aria-label="Platform features">
+          <span><b>01</b> Lessons unlock in sequence</span>
+          <span><b>02</b> Quizzes with guided retries</span>
+          <span><b>03</b> Course materials in one place</span>
         </div>
       </section>
 
