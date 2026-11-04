@@ -31,7 +31,7 @@ import {
 function formatOfferingOption(offering) {
   const course = offering.course || {};
   const section = offering.section || {};
-  return `${course.code || "Course"} ? ${course.title || "Untitled subject"} ? ${section.name || "Section"} (${section.yearLevel || "Year level not set"})`;
+  return `${course.code || "Course"} \u00b7 ${course.title || "Untitled subject"} \u00b7 ${section.name || "Section"} (${section.yearLevel || "Year level not set"})`;
 }
 
 export function StudentsPage() {
