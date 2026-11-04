@@ -8,7 +8,7 @@ import rateLimit from "express-rate-limit";
 import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
 import path from "node:path";
-import { readFile } from "node:fs/promises";
+import { readFile, unlink } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import authRoutes from "./routes/auth.js";
@@ -322,6 +322,46 @@ app.post(
       await Promise.allSettled(uploaded.map(removeCloudinaryAsset));
       throw error;
     }
+  }),
+);
+app.delete(
+  "/api/lessons/:lessonId/materials/:filename",
+  authenticate,
+  allowRoles("faculty"),
+  checkLessonOwner,
+  asyncRoute(async (req, res) => {
+    const { filename } = req.params;
+    if (!/^[0-9a-f-]{36}\.pptx$/i.test(filename))
+      return fail(res, 404, "Presentation not found.");
+    const fileUrl = `/uploads/${filename}`;
+    const material = req.lesson.materials.find((item) => item.url === fileUrl);
+    if (
+      !material ||
+      (material.mimeType !==
+        "application/vnd.openxmlformats-officedocument.presentationml.presentation" &&
+        !material.name?.toLowerCase().endsWith(".pptx"))
+    )
+      return fail(res, 404, "Presentation not found.");
+
+    req.lesson.materials = req.lesson.materials.filter(
+      (item) => item.url !== fileUrl,
+    );
+    await req.lesson.save();
+
+    try {
+      if (material.cloudinaryPublicId) {
+        await removeCloudinaryAsset(material.cloudinaryPublicId);
+      } else {
+        await unlink(path.join(uploadRoot, filename)).catch((error) => {
+          if (error.code !== "ENOENT") throw error;
+        });
+      }
+    } catch (error) {
+      process.stderr.write(
+        `Presentation cleanup failed for ${filename}: ${error.message}\n`,
+      );
+    }
+    return success(res, { materials: req.lesson.materials });
   }),
 );
 app.post(

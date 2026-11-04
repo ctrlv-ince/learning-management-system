@@ -28,6 +28,12 @@ import {
   StatusBadge,
 } from "../shared.jsx";
 
+function formatOfferingOption(offering) {
+  const course = offering.course || {};
+  const section = offering.section || {};
+  return `${course.code || "Course"} ? ${course.title || "Untitled subject"} ? ${section.name || "Section"} (${section.yearLevel || "Year level not set"})`;
+}
+
 export function StudentsPage() {
   const enrollmentLimit = 40;
   const [searchParams] = useSearchParams();
@@ -171,8 +177,7 @@ export function StudentsPage() {
                 <option value="">Choose a course</option>
                 {data?.map((item) => (
                   <option value={item._id} key={item._id}>
-                    {item.course?.code} · {item.course?.title} ·{" "}
-                    {item.section?.name} ({item.section?.yearLevel})
+                    {formatOfferingOption(item)}
                   </option>
                 ))}
               </select>
@@ -813,7 +818,7 @@ export function GradesPage() {
               <option value="">Choose a course</option>
               {offerings?.map((item) => (
                 <option key={item._id} value={item._id}>
-                  {item.course?.code} · {item.section?.name}
+                  {formatOfferingOption(item)}
                 </option>
               ))}
             </select>

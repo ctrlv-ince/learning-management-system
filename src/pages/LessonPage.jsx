@@ -12,6 +12,7 @@ import {
   Maximize2,
   Minimize2,
   Plus,
+  Trash2,
 } from "lucide-react";
 import { api, apiUpload, send } from "../api.js";
 import { validateRequiredValues } from "../formValidation.js";
@@ -21,6 +22,14 @@ import { useAuth, Loading, Breadcrumbs, PageHeader } from "../shared.jsx";
 function formatUploadSize(bytes) {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function toLocalDateTimeInput(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+  return date.toISOString().slice(0, 16);
 }
 
 function FilePicker({
@@ -83,6 +92,22 @@ export function LessonPage() {
   const quizPanelRef = useRef(null);
   const [timeoutNotice, setTimeoutNotice] = useState(null);
   const [timeoutRetry, setTimeoutRetry] = useState(0);
+  const [availabilityNow, setAvailabilityNow] = useState(Date.now());
+  const quizOpensAt = data?.quiz?.availableFrom
+    ? new Date(data.quiz.availableFrom).getTime()
+    : null;
+  const quizDeadline = data?.quiz?.deadline
+    ? new Date(data.quiz.deadline).getTime()
+    : null;
+  const quizUnavailableMessage =
+    quizOpensAt && availabilityNow < quizOpensAt
+      ? `This quiz opens ${new Date(quizOpensAt).toLocaleString()}.`
+      : quizDeadline && availabilityNow > quizDeadline
+        ? `This quiz was available until ${new Date(quizDeadline).toLocaleString()}. Ask your faculty member to update its availability.`
+        : quizStartError === "This quiz is outside its availability period."
+          ? "This quiz is outside its availability period. Ask your faculty member to check its schedule."
+          : "";
+  const quizUnavailable = Boolean(quizUnavailableMessage);
   const load = async () => {
     if (!data) setPageLoading(true);
     setPageError("");
@@ -142,6 +167,11 @@ export function LessonPage() {
     const timer = window.setInterval(update, 1000);
     return () => window.clearInterval(timer);
   }, [data?.session?.expiresAt]);
+  useEffect(() => {
+    if (!data?.quiz?._id) return undefined;
+    const timer = window.setInterval(() => setAvailabilityNow(Date.now()), 15000);
+    return () => window.clearInterval(timer);
+  }, [data?.quiz?._id]);
   useEffect(() => {
     const sessionId = data?.session?.id;
     const quizId = data?.quiz?._id;
@@ -246,7 +276,7 @@ export function LessonPage() {
     }
   }
   async function startQuiz() {
-    if (!data?.quiz) return;
+    if (!data?.quiz || quizUnavailable) return;
     setBusy(true);
     setQuizStartError("");
     try {
@@ -544,6 +574,11 @@ export function LessonPage() {
                       ? `The ${quiz.timeLimitMinutes ?? 10}-minute timer is running. It started when you began this attempt.`
                       : `Time limit: ${quiz.timeLimitMinutes ?? 10} minutes. The timer starts when you click Start quiz.`}
                   </p>
+                  {quizUnavailableMessage && !data.session && !hasPassedQuiz && (
+                    <p className="quiz-availability-notice" role="status">
+                      {quizUnavailableMessage}
+                    </p>
+                  )}
                   {timeoutNotice && (
                     <div className={`quiz-timeout-notice ${timeoutNotice.kind}`} role={timeoutNotice.kind === "error" ? "alert" : "status"} aria-live="polite">
                       <p>{timeoutNotice.message}</p>
@@ -590,7 +625,7 @@ export function LessonPage() {
                         : "You can retry after a failed attempt until you pass."}
                     </p>
                   )}
-                  {quizStartError && (
+                  {quizStartError && !quizUnavailable && (
                     <p className="upload-error" role="alert">
                       {quizStartError}
                     </p>
@@ -606,7 +641,7 @@ export function LessonPage() {
                       <button
                         className="button primary full-width"
                         type="button"
-                        disabled={busy}
+                        disabled={busy || quizUnavailable}
                         onClick={startQuiz}
                       >
                         {busy
@@ -1645,7 +1680,7 @@ export function QuizEditor({ lessonId, quiz, onSaved }) {
           <input
             name="availableFrom"
             type="datetime-local"
-            defaultValue={quiz.availableFrom?.slice(0, 16)}
+            defaultValue={toLocalDateTimeInput(quiz.availableFrom)}
           />
         </label>
         <label>
@@ -1653,7 +1688,7 @@ export function QuizEditor({ lessonId, quiz, onSaved }) {
           <input
             name="deadline"
             type="datetime-local"
-            defaultValue={quiz.deadline?.slice(0, 16)}
+            defaultValue={toLocalDateTimeInput(quiz.deadline)}
           />
         </label>
       </div>
@@ -1680,6 +1715,7 @@ export function UploadMaterials({ lessonId, materials = [], onUploaded }) {
   const [uploadSuccess, setUploadSuccess] = useState("");
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [summaryBusy, setSummaryBusy] = useState("");
+  const [deletingPresentation, setDeletingPresentation] = useState("");
   const [draft, setDraft] = useState(null);
   async function upload(event) {
     event.preventDefault();
@@ -1725,6 +1761,24 @@ export function UploadMaterials({ lessonId, materials = [], onUploaded }) {
       notify(error.message);
     } finally {
       setSummaryBusy("");
+    }
+  }
+  async function deletePresentation(file) {
+    const filename = file.url.split("/").pop();
+    if (!window.confirm(`Delete “${file.name}” from this lesson?`)) return;
+    setDeletingPresentation(file.url);
+    try {
+      await api(
+        `/lessons/${lessonId}/materials/${encodeURIComponent(filename)}`,
+        { method: "DELETE" },
+      );
+      if (draft?.filename === filename) setDraft(null);
+      notify("Presentation deleted from this lesson.");
+      await onUploaded();
+    } catch (error) {
+      notify(error.message);
+    } finally {
+      setDeletingPresentation("");
     }
   }
   async function applyDraft() {
@@ -1802,8 +1856,22 @@ export function UploadMaterials({ lessonId, materials = [], onUploaded }) {
           <ul>
             {materials.map((file) => (
               <li key={file.url}>
-                <a href={file.url} target="_blank" rel="noreferrer">{file.name}</a>
-                <small>{(file.size / 1024 / 1024).toFixed(1)} MB</small>
+                <span className="attached-material-details">
+                  <a href={file.url} target="_blank" rel="noreferrer">{file.name}</a>
+                  <small>{(file.size / 1024 / 1024).toFixed(1)} MB</small>
+                </span>
+                {file.name?.toLowerCase().endsWith(".pptx") && (
+                  <button
+                    className="button danger remove-presentation-button"
+                    type="button"
+                    disabled={busy || Boolean(deletingPresentation)}
+                    onClick={() => deletePresentation(file)}
+                    aria-label={`Delete ${file.name}`}
+                  >
+                    <Trash2 size={15} />
+                    {deletingPresentation === file.url ? "Deleting…" : "Delete"}
+                  </button>
+                )}
               </li>
             ))}
           </ul>

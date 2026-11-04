@@ -1063,6 +1063,19 @@ button:focus-visible {
   gap: 12px;
   font-size: 13px;
 }
+.attached-material-details {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+.attached-material-details small { font-size: 12px; }
+.remove-presentation-button {
+  min-height: 36px;
+  flex: none;
+  gap: 6px;
+  padding: 0 10px;
+  font-size: 12px;
+}
 .attached-materials a {
   min-width: 0;
   overflow-wrap: anywhere;
@@ -3420,6 +3433,21 @@ td small {
   to { background-position: -200% 0; }
 }
 .presentation-viewer-error .button { margin-top: 3px; }
+.quiz-availability-notice {
+  margin: 14px 0 0;
+  padding: 12px 15px;
+  border: 1px solid #ead7c7;
+  border-radius: 10px;
+  background: #fff8f3;
+  color: #85543d;
+  font-size: 14px;
+  line-height: 1.55;
+}
+.quiz-panel button:disabled.full-width {
+  box-shadow: none;
+  cursor: not-allowed;
+  opacity: 0.58;
+}
 
 /* Landing page audience paths */
 .landing-audiences {
