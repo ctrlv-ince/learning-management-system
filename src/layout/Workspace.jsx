@@ -31,6 +31,7 @@ import {
   AcademicSetup,
 } from "../pages/Faculty.jsx";
 import { LessonPage } from "../pages/LessonPage.jsx";
+import { PresentationWorkspace } from "../pages/PresentationWorkspace.jsx";
 
 export function Workspace() {
   const { session, setSession } = useAuth();
@@ -211,6 +212,10 @@ export function Workspace() {
             }
           />
           <Route path="lesson/:lessonId" element={<LessonPage />} />
+          <Route
+            path="lesson/:lessonId/presentation"
+            element={role === "faculty" ? <PresentationWorkspace /> : <Navigate to="/" replace />}
+          />
           <Route path="*" element={<Dashboard />} />
         </Routes>
       </main>

@@ -11,6 +11,7 @@ import {
   FileText,
   Maximize2,
   Minimize2,
+  Presentation,
   Plus,
   Trash2,
 } from "lucide-react";
@@ -366,6 +367,11 @@ export function LessonPage() {
         eyebrow={`LESSON ${String(lesson.sequence).padStart(2, "0")} · ${faculty ? "FACULTY VIEW" : "YOUR LEARNING PATH"}`}
         title={lesson.title}
         detail={lesson.description}
+        action={faculty ? (
+          <Link className="button primary lesson-create-presentation" to={`/lesson/${lessonId}/presentation`}>
+            <Presentation size={17} /> Create presentation
+          </Link>
+        ) : null}
       />
       <div className={`lesson-content-grid${quizInProgress ? " quiz-focus-mode" : ""}`}>
         {!quizInProgress && <article className="lesson-content panel">
