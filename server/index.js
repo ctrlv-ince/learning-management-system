@@ -177,25 +177,76 @@ function uploadToCloudinary(file, publicId) {
     stream.end(file.buffer);
   });
 }
-function cloudinaryDeliveryUrl(material) {
-  return cloudinary.url(material.cloudinaryPublicId, {
-    resource_type: "raw",
-    type: "authenticated",
-    version: material.cloudinaryVersion,
-    sign_url: true,
-    secure: true,
-  });
+function cloudinaryDeliveryUrl(material, filename) {
+  const format = path.extname(filename).slice(1).toLowerCase();
+  return cloudinary.utils.private_download_url(
+    material.cloudinaryPublicId,
+    format,
+    {
+      resource_type: "raw",
+      type: "authenticated",
+      expires_at: Math.floor(Date.now() / 1000) + 10 * 60,
+      attachment: false,
+    },
+  );
 }
 async function getMaterialBuffer(material, filename) {
   if (!material.cloudinaryPublicId) return readFile(path.join(uploadRoot, filename));
-  const response = await fetch(cloudinaryDeliveryUrl(material), {
+  const response = await fetch(cloudinaryDeliveryUrl(material, filename), {
     signal: AbortSignal.timeout(30_000),
   });
-  if (!response.ok) throw new Error(`Cloudinary file fetch failed (${response.status}).`);
+  if (!response.ok) {
+    const detail = (response.headers.get("x-cld-error") || "")
+      .replace(/[\r\n\t]/g, " ")
+      .slice(0, 240);
+    throw new Error(
+      `Cloudinary file fetch failed (${response.status})${detail ? `: ${detail}` : "."}`,
+    );
+  }
   const buffer = Buffer.from(await response.arrayBuffer());
   if (buffer.length > 15 * 1024 * 1024)
     throw new Error("The stored lesson material exceeds the allowed file size.");
   return buffer;
+}
+function sendMaterialBuffer(req, res, material, filename, buffer) {
+  const headers = {
+    "Content-Type": material.mimeType || "application/octet-stream",
+    "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(material.name || filename)}`,
+    "Accept-Ranges": "bytes",
+    "X-Content-Type-Options": "nosniff",
+    "Cache-Control": "private, no-store",
+  };
+  const rangeHeader = req.headers.range;
+  if (!rangeHeader) {
+    res.set({ ...headers, "Content-Length": String(buffer.length) });
+    return res.status(200).send(buffer);
+  }
+
+  const match = /^bytes=(\d*)-(\d*)$/.exec(rangeHeader);
+  if (!match || (!match[1] && !match[2])) {
+    res.set("Content-Range", `bytes */${buffer.length}`);
+    return res.status(416).set(headers).end();
+  }
+  let start = match[1] ? Number(match[1]) : null;
+  let end = match[2] ? Number(match[2]) : null;
+  if (start === null) {
+    const suffixLength = end;
+    start = Math.max(0, buffer.length - suffixLength);
+    end = buffer.length - 1;
+  } else {
+    end = end === null ? buffer.length - 1 : Math.min(end, buffer.length - 1);
+  }
+  if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || start >= buffer.length || end < start) {
+    res.set("Content-Range", `bytes */${buffer.length}`);
+    return res.status(416).set(headers).end();
+  }
+  const chunk = buffer.subarray(start, end + 1);
+  res.set({
+    ...headers,
+    "Content-Length": String(chunk.length),
+    "Content-Range": `bytes ${start}-${end}/${buffer.length}`,
+  });
+  return res.status(206).send(chunk);
 }
 async function removeCloudinaryAsset(publicId) {
   return cloudinary.uploader.destroy(publicId, {
@@ -331,17 +382,11 @@ app.delete(
   checkLessonOwner,
   asyncRoute(async (req, res) => {
     const { filename } = req.params;
-    if (!/^[0-9a-f-]{36}\.pptx$/i.test(filename))
-      return fail(res, 404, "Presentation not found.");
+    if (!/^[0-9a-f-]{36}\.(pdf|docx|pptx|jpe?g|png|webp|mp4)$/i.test(filename))
+      return fail(res, 404, "Lesson material not found.");
     const fileUrl = `/uploads/${filename}`;
     const material = req.lesson.materials.find((item) => item.url === fileUrl);
-    if (
-      !material ||
-      (material.mimeType !==
-        "application/vnd.openxmlformats-officedocument.presentationml.presentation" &&
-        !material.name?.toLowerCase().endsWith(".pptx"))
-    )
-      return fail(res, 404, "Presentation not found.");
+    if (!material) return fail(res, 404, "Lesson material not found.");
 
     req.lesson.materials = req.lesson.materials.filter(
       (item) => item.url !== fileUrl,
@@ -358,7 +403,7 @@ app.delete(
       }
     } catch (error) {
       process.stderr.write(
-        `Presentation cleanup failed for ${filename}: ${error.message}\n`,
+        `Lesson material cleanup failed for ${filename}: ${error.message}\n`,
       );
     }
     return success(res, { materials: req.lesson.materials });
@@ -615,7 +660,7 @@ app.get(
   authenticate,
   asyncRoute(async (req, res) => {
     const filename = req.params.filename;
-    if (!/^[0-9a-f-]{36}\.pptx$/i.test(filename))
+    if (!/^[0-9a-f-]{36}\.(docx|pptx)$/i.test(filename))
       return fail(res, 404, "File not found.");
     const fileUrl = `/uploads/${filename}`;
     const lesson = await Lesson.findOne({ "materials.url": fileUrl })
@@ -634,8 +679,9 @@ app.get(
     try {
       const material = lesson.materials.find((item) => item.url === fileUrl);
       const materialBuffer = await getMaterialBuffer(material, filename);
+      const fileType = path.extname(filename).slice(1).toLowerCase();
       const ast = await OfficeParser.parseOffice(materialBuffer, {
-          fileType: "pptx",
+          fileType,
           allowRemoteAssets: false,
           ocr: false,
           extractAttachments: true,
@@ -700,14 +746,7 @@ app.get(
     if (!material) return fail(res, 404, "File not found.");
     if (material.cloudinaryPublicId) {
       const buffer = await getMaterialBuffer(material, req.params.filename);
-      res.set({
-        "Content-Type": material.mimeType || "application/octet-stream",
-        "Content-Length": String(buffer.length),
-        "Content-Disposition": `inline; filename*=UTF-8''${encodeURIComponent(material.name || req.params.filename)}`,
-        "Cache-Control": "private, no-store",
-        "X-Content-Type-Options": "nosniff",
-      });
-      return res.status(200).send(buffer);
+      return sendMaterialBuffer(req, res, material, req.params.filename, buffer);
     }
     return res.sendFile(path.join(uploadRoot, req.params.filename));
   }),

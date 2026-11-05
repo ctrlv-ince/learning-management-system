@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import {
   ArrowRight,
@@ -18,6 +18,8 @@ import { api, apiUpload, send } from "../api.js";
 import { validateRequiredValues } from "../formValidation.js";
 import { normalizePresentationNamespacePrefixes } from "../presentationCompatibility.js";
 import { useAuth, Loading, Breadcrumbs, PageHeader } from "../shared.jsx";
+
+const PdfMaterial = lazy(() => import("../components/PdfMaterial.jsx"));
 
 function formatUploadSize(bytes) {
   if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
@@ -434,6 +436,25 @@ export function LessonPage() {
             if (isPresentation) {
               return <PresentationViewer file={file} key={file.url} />;
             }
+            const isPdf =
+              file.mimeType === "application/pdf" ||
+              file.name?.toLowerCase().endsWith(".pdf");
+            if (isPdf)
+              return (
+                <Suspense key={file.url} fallback={<div className="pdf-material-loading">Preparing PDF reader...</div>}>
+                  <PdfMaterial file={file} />
+                </Suspense>
+              );
+            const isDocument =
+              file.mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+              file.name?.toLowerCase().endsWith(".docx");
+            if (isDocument) return <OfficeDocumentMaterial file={file} key={file.url} />;
+            const isImage =
+              /^image\/(jpeg|png|webp)$/.test(file.mimeType || "") ||
+              /\.(jpe?g|png|webp)$/i.test(file.name || "");
+            if (isImage) return <ImageMaterial file={file} key={file.url} />;
+            const isVideo = file.mimeType === "video/mp4" || file.name?.toLowerCase().endsWith(".mp4");
+            if (isVideo) return <VideoMaterial file={file} key={file.url} />;
             return (
               <a
                 className="material-link"
@@ -756,6 +777,91 @@ export function LessonPage() {
         </aside>
       </div>
     </div>
+  );
+}
+
+function ImageMaterial({ file }) {
+  const [previewOpen, setPreviewOpen] = useState(false);
+  return (
+    <section className={`image-material${previewOpen ? " is-open" : ""}`}>
+      <div className="material-link image-material-heading">
+        <span className="material-file"><FileText size={15} /></span>
+        <span>
+          <b>{file.name}</b>
+          <small>{(file.size / 1024 / 1024).toFixed(1)} MB · Image</small>
+        </span>
+        <button className="button secondary pdf-preview-toggle" type="button" aria-expanded={previewOpen} onClick={() => setPreviewOpen((open) => !open)}>
+          {previewOpen ? "Close preview" : "View image"}
+          {previewOpen ? <ChevronLeft size={15} /> : <ChevronRight size={15} />}
+        </button>
+        <a className="pdf-open-link" href={file.url} target="_blank" rel="noreferrer" aria-label={`Open ${file.name} in a new tab`} title="Open image in a new tab">
+          <ArrowUpRight size={16} />
+        </a>
+      </div>
+      {previewOpen && (
+        <div className="image-preview-frame">
+          <img src={file.url} alt={file.name} loading="lazy" />
+        </div>
+      )}
+    </section>
+  );
+}
+
+function OfficeDocumentMaterial({ file }) {
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const filename = file.url.split("/").pop();
+  return (
+    <section className={`office-document-material${previewOpen ? " is-open" : ""}`}>
+      <div className="material-link image-material-heading">
+        <span className="material-file"><FileText size={15} /></span>
+        <span>
+          <b>{file.name}</b>
+          <small>{(file.size / 1024 / 1024).toFixed(1)} MB · Word document</small>
+        </span>
+        <button className="button secondary pdf-preview-toggle" type="button" aria-expanded={previewOpen} onClick={() => setPreviewOpen((open) => !open)}>
+          {previewOpen ? "Close preview" : "View document"}
+          {previewOpen ? <ChevronLeft size={15} /> : <ChevronRight size={15} />}
+        </button>
+        <a className="pdf-open-link" href={file.url} target="_blank" rel="noreferrer" aria-label={`Open ${file.name} in a new tab`} title="Open document in a new tab">
+          <ArrowUpRight size={16} />
+        </a>
+      </div>
+      {previewOpen && (
+        <div className="office-document-preview">
+          <iframe src={`/uploads/${encodeURIComponent(filename)}/preview`} title={`Document preview: ${file.name}`} loading="lazy" />
+          <p>Preview formatting may differ from Microsoft Word. Open the original file for full fidelity.</p>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function VideoMaterial({ file }) {
+  const [previewOpen, setPreviewOpen] = useState(false);
+  return (
+    <section className={`video-material${previewOpen ? " is-open" : ""}`}>
+      <div className="material-link image-material-heading">
+        <span className="material-file"><FileText size={15} /></span>
+        <span>
+          <b>{file.name}</b>
+          <small>{(file.size / 1024 / 1024).toFixed(1)} MB · MP4 video</small>
+        </span>
+        <button className="button secondary pdf-preview-toggle" type="button" aria-expanded={previewOpen} onClick={() => setPreviewOpen((open) => !open)}>
+          {previewOpen ? "Close player" : "Play video"}
+          {previewOpen ? <ChevronLeft size={15} /> : <ChevronRight size={15} />}
+        </button>
+        <a className="pdf-open-link" href={file.url} target="_blank" rel="noreferrer" aria-label={`Open ${file.name} in a new tab`} title="Open video in a new tab">
+          <ArrowUpRight size={16} />
+        </a>
+      </div>
+      {previewOpen && (
+        <div className="video-preview-frame">
+          <video controls playsInline preload="metadata" src={file.url}>
+            Your browser cannot play this video. Use the open-in-new-tab button above.
+          </video>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -1715,7 +1821,7 @@ export function UploadMaterials({ lessonId, materials = [], onUploaded }) {
   const [uploadSuccess, setUploadSuccess] = useState("");
   const [selectedFiles, setSelectedFiles] = useState([]);
   const [summaryBusy, setSummaryBusy] = useState("");
-  const [deletingPresentation, setDeletingPresentation] = useState("");
+  const [deletingMaterial, setDeletingMaterial] = useState("");
   const [draft, setDraft] = useState(null);
   async function upload(event) {
     event.preventDefault();
@@ -1763,22 +1869,22 @@ export function UploadMaterials({ lessonId, materials = [], onUploaded }) {
       setSummaryBusy("");
     }
   }
-  async function deletePresentation(file) {
+  async function deleteMaterial(file) {
     const filename = file.url.split("/").pop();
-    if (!window.confirm(`Delete “${file.name}” from this lesson?`)) return;
-    setDeletingPresentation(file.url);
+    if (!window.confirm("Delete " + file.name + " from this lesson?")) return;
+    setDeletingMaterial(file.url);
     try {
       await api(
-        `/lessons/${lessonId}/materials/${encodeURIComponent(filename)}`,
+        "/lessons/" + lessonId + "/materials/" + encodeURIComponent(filename),
         { method: "DELETE" },
       );
       if (draft?.filename === filename) setDraft(null);
-      notify("Presentation deleted from this lesson.");
+      notify("Material deleted from this lesson.");
       await onUploaded();
     } catch (error) {
       notify(error.message);
     } finally {
-      setDeletingPresentation("");
+      setDeletingMaterial("");
     }
   }
   async function applyDraft() {
@@ -1808,10 +1914,9 @@ export function UploadMaterials({ lessonId, materials = [], onUploaded }) {
   return (
     <form className="panel upload-panel" onSubmit={upload}>
       <span className="eyebrow">SHARE A RESOURCE</span>
-      <h3>Upload a presentation</h3>
+      <h3>Upload lesson materials</h3>
       <p className="upload-help">
-        Add a PowerPoint to this lesson so students can view it here without
-        downloading.
+        Share PowerPoint, PDF, Word, image, and MP4 files with your students.
       </p>
       <FilePicker
         name="files"
@@ -1860,18 +1965,16 @@ export function UploadMaterials({ lessonId, materials = [], onUploaded }) {
                   <a href={file.url} target="_blank" rel="noreferrer">{file.name}</a>
                   <small>{(file.size / 1024 / 1024).toFixed(1)} MB</small>
                 </span>
-                {file.name?.toLowerCase().endsWith(".pptx") && (
-                  <button
-                    className="button danger remove-presentation-button"
-                    type="button"
-                    disabled={busy || Boolean(deletingPresentation)}
-                    onClick={() => deletePresentation(file)}
-                    aria-label={`Delete ${file.name}`}
-                  >
-                    <Trash2 size={15} />
-                    {deletingPresentation === file.url ? "Deleting…" : "Delete"}
-                  </button>
-                )}
+                <button
+                  className="button danger remove-material-button"
+                  type="button"
+                  disabled={busy || Boolean(deletingMaterial)}
+                  onClick={() => deleteMaterial(file)}
+                  aria-label={`Delete ${file.name}`}
+                >
+                  <Trash2 size={15} />
+                  {deletingMaterial === file.url ? "Deleting..." : "Delete"}
+                </button>
               </li>
             ))}
           </ul>
